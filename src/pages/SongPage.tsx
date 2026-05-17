@@ -46,7 +46,6 @@ export default function SongPage() {
     );
 
   // Build display stanzas: insert chorus after every non-chorus stanza
-  const chorus = song.stanzas.find((s) => s.is_chorus);
   const displayStanzas = buildDisplayStanzas(song.stanzas, song.has_chorus);
 
   return (
