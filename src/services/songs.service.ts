@@ -42,7 +42,7 @@ export async function getSongById(id: string): Promise<Song> {
 export async function searchSongs(query: string): Promise<SongSummary[]> {
   const { data, error } = await supabase
     .from("songs")
-    .select("id, num, title, lang, has_chorus")
+    .select("id, num, title, lang, has_chorus, category_id")
     .or(`title.ilike.%${query}%,num.ilike.%${query}%`)
     .limit(8);
 

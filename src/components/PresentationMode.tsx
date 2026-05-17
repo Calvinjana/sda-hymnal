@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Song, Stanza } from "../types/song.types";
+import type { Song } from "../types/song.types";
 
 interface Slide {
   type: "title" | "stanza" | "chorus";
