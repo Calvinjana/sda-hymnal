@@ -202,14 +202,15 @@ export default function SongPage() {
 // Builds display order: Stanza 1, Chorus, Stanza 2, Chorus, Stanza 3, Chorus...
 function buildDisplayStanzas(stanzas: Stanza[], hasChorus: boolean): Stanza[] {
   if (!hasChorus) return stanzas;
-  const chorus = stanzas.find((s) => s.is_chorus);
-  if (!chorus) return stanzas;
+  const chorusStanza = stanzas.find((s) => s.is_chorus);
+  if (!chorusStanza) return stanzas;
   const result: Stanza[] = [];
-  const nonChorus = stanzas.filter((s) => !s.is_chorus);
-  nonChorus.forEach((st) => {
-    result.push(st);
-    result.push(chorus);
-  });
+  stanzas
+    .filter((s) => !s.is_chorus)
+    .forEach((st) => {
+      result.push(st);
+      result.push(chorusStanza);
+    });
   return result;
 }
 
