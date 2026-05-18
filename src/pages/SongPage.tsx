@@ -10,6 +10,7 @@ export default function SongPage() {
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
   const [presenting, setPresenting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -25,11 +26,14 @@ export default function SongPage() {
       <div
         style={{
           textAlign: "center",
-          padding: "4rem",
-          color: "var(--text-soft)",
+          padding: "5rem 2rem",
+          color: "var(--text-muted)",
         }}
       >
-        Loading hymn...
+        <div style={{ fontSize: 32, marginBottom: "1rem", opacity: 0.4 }}>
+          🎵
+        </div>
+        <p>Loading hymn...</p>
       </div>
     );
   if (!song)
@@ -37,16 +41,22 @@ export default function SongPage() {
       <div
         style={{
           textAlign: "center",
-          padding: "4rem",
-          color: "var(--text-soft)",
+          padding: "5rem 2rem",
+          color: "var(--text-muted)",
         }}
       >
-        Hymn not found
+        <p>Hymn not found.</p>
       </div>
     );
 
-  // Build display stanzas: insert chorus after every non-chorus stanza
+  const isTelugu = song.lang === "te";
   const displayStanzas = buildDisplayStanzas(song.stanzas, song.has_chorus);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div>
@@ -54,138 +64,168 @@ export default function SongPage() {
         <PresentationMode song={song} onClose={() => setPresenting(false)} />
       )}
 
-      <main style={{ maxWidth: 720, margin: "0 auto", padding: "2rem" }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{
-            background: "none",
-            border: "none",
-            color: "var(--text-soft)",
-            cursor: "pointer",
-            marginBottom: "1.5rem",
-            fontSize: 14,
-            fontFamily: "inherit",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          ← Back
-        </button>
+      {/* Header band */}
+      <div
+        style={{
+          background:
+            "linear-gradient(145deg, var(--hero-from), var(--hero-to))",
+          padding: "2.5rem 2rem 3rem",
+        }}
+      >
+        <div style={{ maxWidth: 760, margin: "0 auto" }}>
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              background: "rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "rgba(255,255,255,0.7)",
+              padding: "6px 14px",
+              borderRadius: "var(--radius-sm)",
+              cursor: "pointer",
+              fontSize: 13,
+              fontFamily: "inherit",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: "1.5rem",
+            }}
+          >
+            ← Back
+          </button>
 
-        {/* Header */}
-        <div
-          style={{
-            background: "var(--navy)",
-            borderRadius: 12,
-            padding: "2.5rem",
-            marginBottom: "2rem",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
           <div
             style={{
               fontFamily: "Crimson Pro, serif",
-              fontSize: "4rem",
+              fontSize: "5rem",
               fontWeight: 300,
-              color: "rgba(232,212,139,0.2)",
+              color: "rgba(255,255,255,0.1)",
               lineHeight: 1,
+              marginBottom: "0.25rem",
+              userSelect: "none",
             }}
           >
             {song.num}
           </div>
-          <div
+
+          <h1
             style={{
-              fontFamily: "Crimson Pro, serif",
-              fontSize: "2rem",
+              fontFamily: isTelugu
+                ? "Noto Sans Telugu, sans-serif"
+                : "Crimson Pro, serif",
+              fontSize: "clamp(1.6rem, 4vw, 2.4rem)",
               fontWeight: 400,
-              color: "#E8D48B",
+              color: "#FFFFFF",
+              lineHeight: 1.2,
               marginBottom: "1rem",
             }}
           >
             {song.title}
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <span
-              style={{
-                background: "rgba(201,168,76,0.2)",
-                color: "#E8D48B",
-                padding: "4px 12px",
-                borderRadius: 50,
-                fontSize: 11,
-                fontWeight: 600,
-              }}
-            >
-              English
-            </span>
+          </h1>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Badge
+              text={isTelugu ? "తెలుగు" : "English"}
+              color="rgba(96,165,250,0.3)"
+              textColor="var(--blue-200)"
+            />
             {song.has_chorus && (
-              <span
-                style={{
-                  background: "rgba(46,125,110,0.3)",
-                  color: "#7DD9C8",
-                  padding: "4px 12px",
-                  borderRadius: 50,
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}
-              >
-                Has Chorus
-              </span>
+              <Badge
+                text="Has Refrain"
+                color="rgba(201,168,76,0.2)"
+                textColor="var(--gold-light)"
+              />
             )}
           </div>
         </div>
+      </div>
 
-        {/* Actions */}
+      {/* Action buttons */}
+      <div
+        style={{
+          background: "var(--bg-secondary)",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
         <div
           style={{
+            maxWidth: 760,
+            margin: "0 auto",
+            padding: "1rem 2rem",
             display: "flex",
             gap: 10,
-            marginBottom: "2rem",
             flexWrap: "wrap",
           }}
         >
           <button
             onClick={() => setPresenting(true)}
             style={{
-              background: "var(--gold)",
+              background: "var(--btn-primary-bg)",
               border: "none",
-              borderRadius: 8,
+              borderRadius: "var(--radius-sm)",
+              color: "var(--btn-primary-text)",
               padding: "10px 20px",
               fontSize: 14,
               fontWeight: 500,
               cursor: "pointer",
               fontFamily: "inherit",
-              color: "var(--navy)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              boxShadow: "0 2px 8px rgba(37,99,235,0.3)",
+            }}
+          >
+            <span>⛶</span> Present Song
+          </button>
+          <button
+            onClick={handleCopy}
+            style={{
+              background: "var(--bg-card)",
+              border: "1.5px solid var(--btn-outline-border)",
+              borderRadius: "var(--radius-sm)",
+              color: copied ? "var(--accent)" : "var(--btn-outline-text)",
+              padding: "10px 20px",
+              fontSize: 14,
+              cursor: "pointer",
+              fontFamily: "inherit",
               display: "flex",
               alignItems: "center",
               gap: 8,
             }}
           >
-            🖥 Present Song
+            {copied ? "✓ Copied!" : "🔗 Copy Link"}
           </button>
         </div>
+      </div>
 
-        {/* Lyrics */}
+      {/* Lyrics */}
+      <main style={{ maxWidth: 760, margin: "0 auto", padding: "2rem 1.5rem" }}>
         <div
           style={{
-            background: "var(--cream-mid)",
-            border: "1px solid var(--parchment)",
-            borderRadius: 12,
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius)",
             padding: "2.5rem",
+            boxShadow: "var(--shadow-sm)",
           }}
         >
           {displayStanzas.map((st, i) => (
-            <StanzaBlock key={i} stanza={st} />
+            <StanzaBlock key={i} stanza={st} isTelugu={isTelugu} />
           ))}
         </div>
 
-        <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
+        <div
+          style={{
+            textAlign: "center",
+            padding: "1.5rem 0",
+            borderTop: "1px solid var(--border)",
+            marginTop: "1.5rem",
+          }}
+        >
           <p
             style={{
               fontFamily: "Crimson Pro, serif",
               fontStyle: "italic",
-              color: "var(--text-soft)",
+              color: "var(--text-muted)",
               fontSize: 15,
             }}
           >
@@ -198,29 +238,62 @@ export default function SongPage() {
   );
 }
 
-// Builds display order: Stanza 1, Chorus, Stanza 2, Chorus, Stanza 3, Chorus...
 function buildDisplayStanzas(stanzas: Stanza[], hasChorus: boolean): Stanza[] {
   if (!hasChorus) return stanzas;
-  const chorusStanza = stanzas.find((s) => s.is_chorus);
-  if (!chorusStanza) return stanzas;
+  if (!stanzas.some((s) => s.is_chorus)) return stanzas;
   const result: Stanza[] = [];
   stanzas
     .filter((s) => !s.is_chorus)
     .forEach((st) => {
       result.push(st);
-      result.push(chorusStanza);
+      result.push(stanzas.find((s) => s.is_chorus)!);
     });
   return result;
 }
 
-function StanzaBlock({ stanza }: { stanza: Stanza }) {
+function Badge({
+  text,
+  color,
+  textColor,
+}: {
+  text: string;
+  color: string;
+  textColor: string;
+}) {
+  return (
+    <span
+      style={{
+        background: color,
+        color: textColor,
+        padding: "4px 12px",
+        borderRadius: 50,
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: "0.04em",
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
+function StanzaBlock({
+  stanza,
+  isTelugu,
+}: {
+  stanza: Stanza;
+  isTelugu: boolean;
+}) {
+  const teluguFont = "Noto Sans Telugu, sans-serif";
+  const serifFont = "Crimson Pro, serif";
+
   if (stanza.is_chorus) {
     return (
       <div
         style={{
-          background: "var(--parchment)",
-          borderLeft: "3px solid var(--gold)",
-          borderRadius: "0 8px 8px 0",
+          background: "var(--chorus-bg)",
+          borderLeft: "3px solid var(--chorus-border)",
+          borderRadius: "0 var(--radius-sm) var(--radius-sm) 0",
           padding: "1.25rem 1.5rem",
           margin: "1.5rem 0",
         }}
@@ -228,25 +301,27 @@ function StanzaBlock({ stanza }: { stanza: Stanza }) {
         <div
           style={{
             fontSize: 11,
-            color: "var(--gold)",
-            letterSpacing: "0.08em",
+            color: "var(--accent)",
+            letterSpacing: "0.1em",
             textTransform: "uppercase",
             fontWeight: 600,
             marginBottom: "0.75rem",
           }}
         >
-          Chorus
+          Refrain
         </div>
         <div
           style={{
-            fontFamily: "Crimson Pro, serif",
-            fontSize: "1.2rem",
-            lineHeight: 1.9,
+            fontFamily: isTelugu ? teluguFont : serifFont,
+            fontSize: isTelugu ? "1.1rem" : "1.2rem",
+            lineHeight: isTelugu ? 2.2 : 1.9,
+            color: "var(--text-primary)",
             fontWeight: 300,
+            fontStyle: isTelugu ? "normal" : "italic",
           }}
         >
-          {stanza.text.split("\n").map((line, i) => (
-            <div key={i}>{line}</div>
+          {stanza.text.split("\n").map((l, i) => (
+            <div key={i}>{l}</div>
           ))}
         </div>
       </div>
@@ -258,8 +333,8 @@ function StanzaBlock({ stanza }: { stanza: Stanza }) {
       <div
         style={{
           fontSize: 11,
-          color: "var(--gold)",
-          letterSpacing: "0.08em",
+          color: "var(--text-faint)",
+          letterSpacing: "0.1em",
           textTransform: "uppercase",
           fontWeight: 600,
           marginBottom: "0.75rem",
@@ -269,14 +344,15 @@ function StanzaBlock({ stanza }: { stanza: Stanza }) {
       </div>
       <div
         style={{
-          fontFamily: "Crimson Pro, serif",
-          fontSize: "1.25rem",
-          lineHeight: 1.9,
+          fontFamily: isTelugu ? teluguFont : serifFont,
+          fontSize: isTelugu ? "1.15rem" : "1.25rem",
+          lineHeight: isTelugu ? 2.2 : 1.9,
+          color: "var(--text-primary)",
           fontWeight: 300,
         }}
       >
-        {stanza.text.split("\n").map((line, i) => (
-          <div key={i}>{line}</div>
+        {stanza.text.split("\n").map((l, i) => (
+          <div key={i}>{l}</div>
         ))}
       </div>
     </div>

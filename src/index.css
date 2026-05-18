@@ -1,111 +1,172 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import "tailwindcss";
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+@import url("https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=Noto+Sans+Telugu:wght@300;400;600&display=swap");
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── LIGHT MODE (Blue scale) ─────────────────────────── */
+:root {
+  --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
+  --blue-200: #bfdbfe;
+  --blue-300: #93c5fd;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+  --blue-800: #1e40af;
+  --blue-900: #1e3a8a;
+
+  --gold: #c9a84c;
+  --gold-light: #e8d48b;
+  --gold-pale: #fbf5e0;
+
+  /* Semantic */
+  --bg: #ffffff;
+  --bg-secondary: var(--blue-50);
+  --bg-card: #ffffff;
+  --bg-hover: var(--blue-100);
+  --border: var(--blue-100);
+  --border-mid: var(--blue-200);
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+
+  --nav-bg: var(--blue-900);
+  --nav-text: #ffffff;
+  --nav-text-muted: rgba(255, 255, 255, 0.6);
+  --nav-active-bg: rgba(255, 255, 255, 0.12);
+
+  --hero-from: var(--blue-900);
+  --hero-to: var(--blue-700);
+
+  --card-en-from: var(--blue-800);
+  --card-en-to: var(--blue-600);
+  --card-te-from: #064e3b;
+  --card-te-to: #065f46;
+
+  --accent: var(--blue-600);
+  --accent-hover: var(--blue-700);
+  --accent-light: var(--blue-100);
+
+  --btn-primary-bg: var(--blue-600);
+  --btn-primary-text: #ffffff;
+  --btn-outline-border: var(--blue-200);
+  --btn-outline-text: var(--blue-700);
+
+  --num-color: var(--blue-600);
+  --chorus-bg: var(--blue-50);
+  --chorus-border: var(--blue-400);
+
+  --shadow-sm: 0 1px 3px rgba(30, 58, 138, 0.08);
+  --shadow: 0 4px 16px rgba(30, 58, 138, 0.1);
+  --shadow-lg: 0 12px 40px rgba(30, 58, 138, 0.14);
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-pill: 50px;
+
+  --transition: 0.2s ease;
+}
+
+/* ── DARK MODE (inverted blue scale) ────────────────── */
+.dark {
+  --bg: #0a0f1e;
+  --bg-secondary: #0f1629;
+  --bg-card: #111827;
+  --bg-hover: #1e2d4a;
+  --border: #1e2d4a;
+  --border-mid: #243b5e;
+
+  --text-primary: #f0f6ff;
+  --text-secondary: #bfdbfe;
+  --text-muted: #7fa8d4;
+  --text-faint: #4a6fa8;
+
+  --nav-bg: #060c1a;
+  --nav-text: #f0f6ff;
+  --nav-text-muted: rgba(191, 219, 254, 0.5);
+  --nav-active-bg: rgba(96, 165, 250, 0.15);
+
+  --hero-from: #060c1a;
+  --hero-to: #0f1e3a;
+
+  --card-en-from: #0f1e3a;
+  --card-en-to: #1a3052;
+  --card-te-from: #022c22;
+  --card-te-to: #064e3b;
+
+  --accent: var(--blue-400);
+  --accent-hover: var(--blue-300);
+  --accent-light: rgba(96, 165, 250, 0.1);
+
+  --btn-primary-bg: var(--blue-500);
+  --btn-primary-text: #ffffff;
+  --btn-outline-border: #243b5e;
+  --btn-outline-text: var(--blue-300);
+
+  --num-color: var(--blue-400);
+  --chorus-bg: rgba(30, 64, 175, 0.15);
+  --chorus-border: var(--blue-500);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ── BASE ─────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  margin: 0;
+  font-family: "DM Sans", sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  transition:
+    background var(--transition),
+    color var(--transition);
+  min-height: 100vh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+.font-telugu {
+  font-family: "Noto Sans Telugu", sans-serif;
+}
+.font-serif {
+  font-family: "Crimson Pro", serif;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+/* ── SCROLLBAR ────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
 }
-p {
-  margin: 0;
+::-webkit-scrollbar-thumb {
+  background: var(--border-mid);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* ── TRANSITIONS ──────────────────────────────────── */
+*,
+*::before,
+*::after {
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition);
 }

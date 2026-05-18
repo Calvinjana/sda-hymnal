@@ -11,7 +11,7 @@ export default function HomePage() {
   const [searching, setSearching] = useState(false);
 
   useEffect(() => {
-    getSongs("en", 1, 5).then((r) => setPopular(r.data));
+    getSongs("en", 1, 6).then((r) => setPopular(r.data));
   }, []);
 
   useEffect(() => {
@@ -30,337 +30,539 @@ export default function HomePage() {
 
   return (
     <div>
-      {/* Hero */}
+      {/* ── HERO ─────────────────────────────────── */}
       <div
         style={{
-          background: "linear-gradient(135deg, #0F1E3A 0%, #243B5E 60%)",
+          background:
+            "linear-gradient(145deg, var(--hero-from) 0%, var(--hero-to) 100%)",
           padding: "5rem 2rem 4rem",
           textAlign: "center",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
-        <div style={{ fontSize: 48, marginBottom: "1.5rem" }}>✝</div>
+        {/* Decorative circles */}
+        <div
+          style={{
+            position: "absolute",
+            width: 400,
+            height: 400,
+            borderRadius: "50%",
+            background: "rgba(96,165,250,0.06)",
+            top: -100,
+            left: -100,
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            width: 300,
+            height: 300,
+            borderRadius: "50%",
+            background: "rgba(96,165,250,0.05)",
+            bottom: -80,
+            right: -60,
+            pointerEvents: "none",
+          }}
+        />
+
+        <div
+          style={{
+            fontSize: 52,
+            marginBottom: "1.5rem",
+            filter: "drop-shadow(0 4px 16px rgba(201,168,76,0.5))",
+          }}
+        >
+          ✝
+        </div>
+
+        <div
+          style={{
+            display: "inline-block",
+            background: "rgba(96,165,250,0.12)",
+            border: "1px solid rgba(96,165,250,0.25)",
+            color: "var(--blue-300)",
+            padding: "4px 16px",
+            borderRadius: 50,
+            fontSize: 11,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            marginBottom: "1rem",
+          }}
+        >
+          Seventh-day Adventist
+        </div>
+
         <h1
           style={{
             fontFamily: "Crimson Pro, serif",
-            fontSize: "3.2rem",
+            fontSize: "clamp(2.5rem, 6vw, 4rem)",
             fontWeight: 300,
-            color: "#E8D48B",
+            color: "#FFFFFF",
             lineHeight: 1.1,
-            marginBottom: "0.5rem",
+            marginBottom: "0.75rem",
+            letterSpacing: "-0.02em",
           }}
         >
-          <strong style={{ fontWeight: 600, display: "block" }}>
-            SDA Hymnal
-          </strong>
+          SDA <strong style={{ fontWeight: 600 }}>Hymnal</strong>
         </h1>
+
         <p
           style={{
-            color: "rgba(232,212,139,0.6)",
+            color: "rgba(191,219,254,0.7)",
             fontSize: 15,
             marginBottom: "2.5rem",
+            letterSpacing: "0.02em",
           }}
         >
-          Seventh-day Adventist · English & Telugu · 1200+ Songs
+          English & Telugu · 1200+ Songs · Worship & Praise
         </p>
 
-        {/* Search */}
+        {/* Search bar */}
         <div style={{ maxWidth: 560, margin: "0 auto", position: "relative" }}>
+          <div
+            style={{
+              position: "absolute",
+              left: 18,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "rgba(191,219,254,0.5)",
+              fontSize: 18,
+              pointerEvents: "none",
+            }}
+          >
+            🔍
+          </div>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by title, number, or lyrics..."
             style={{
               width: "100%",
-              padding: "16px 52px 16px 20px",
-              borderRadius: 50,
-              border: "2px solid rgba(201,168,76,0.3)",
-              background: "rgba(255,255,255,0.05)",
-              color: "#E8D48B",
+              padding: "16px 20px 16px 50px",
+              borderRadius: "var(--radius-pill)",
+              border: "1.5px solid rgba(96,165,250,0.25)",
+              background: "rgba(255,255,255,0.07)",
+              backdropFilter: "blur(12px)",
+              color: "#FFFFFF",
               fontSize: 15,
               outline: "none",
               fontFamily: "inherit",
+              transition: "border-color 0.2s, box-shadow 0.2s",
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = "rgba(96,165,250,0.6)";
+              e.target.style.boxShadow = "0 0 0 3px rgba(96,165,250,0.15)";
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = "rgba(96,165,250,0.25)";
+              e.target.style.boxShadow = "none";
             }}
           />
-          <span
-            style={{
-              position: "absolute",
-              right: 18,
-              top: "50%",
-              transform: "translateY(-50%)",
-              fontSize: 18,
-            }}
-          >
-            🔍
-          </span>
+          {searching && (
+            <div
+              style={{
+                position: "absolute",
+                right: 18,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "rgba(191,219,254,0.5)",
+                fontSize: 13,
+              }}
+            >
+              ...
+            </div>
+          )}
         </div>
 
-        {/* Search results */}
+        {/* Search results dropdown */}
         {results.length > 0 && (
           <div
             style={{
               maxWidth: 560,
-              margin: "12px auto 0",
-              background: "var(--cream-mid)",
-              borderRadius: 12,
+              margin: "8px auto 0",
+              background: "var(--bg-card)",
+              borderRadius: "var(--radius)",
               overflow: "hidden",
-              border: "1px solid var(--parchment)",
+              border: "1px solid var(--border)",
+              boxShadow: "var(--shadow-lg)",
               textAlign: "left",
             }}
           >
-            {results.map((s) => (
+            {results.map((s, i) => (
               <div
                 key={s.id}
-                onClick={() => navigate(`/song/${s.id}`)}
-                style={{
-                  padding: "12px 20px",
-                  cursor: "pointer",
-                  borderBottom: "1px solid var(--parchment)",
-                  display: "flex",
-                  gap: 12,
-                  alignItems: "center",
+                onClick={() => {
+                  navigate(`/song/${s.id}`);
+                  setQuery("");
+                  setResults([]);
                 }}
+                style={{
+                  padding: "11px 18px",
+                  cursor: "pointer",
+                  borderBottom:
+                    i < results.length - 1 ? "1px solid var(--border)" : "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "var(--bg-hover)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
               >
                 <span
                   style={{
-                    color: "var(--gold)",
+                    color: "var(--num-color)",
                     fontWeight: 600,
+                    fontSize: 14,
                     minWidth: 36,
+                    fontFamily: "Crimson Pro, serif",
                   }}
                 >
                   {s.num}
                 </span>
-                <span style={{ color: "var(--text-dark)" }}>{s.title}</span>
+                <span style={{ color: "var(--text-primary)", fontSize: 14 }}>
+                  {s.title}
+                </span>
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    fontSize: 11,
+                    color: "var(--text-faint)",
+                    background: "var(--accent-light)",
+                    padding: "2px 8px",
+                    borderRadius: 50,
+                  }}
+                >
+                  {s.lang === "te" ? "తె" : "EN"}
+                </span>
               </div>
             ))}
           </div>
         )}
-        {searching && (
-          <p
-            style={{
-              color: "rgba(232,212,139,0.4)",
-              marginTop: 12,
-              fontSize: 13,
-            }}
-          >
-            Searching...
-          </p>
-        )}
-      </div>
 
-      <main
-        style={{ maxWidth: 1200, margin: "0 auto", padding: "2.5rem 2rem" }}
-      >
-        {/* Hymnal Cards */}
-        <h2
+        {/* Quick filter tags */}
+        <div
           style={{
-            fontFamily: "Crimson Pro, serif",
-            fontSize: "1.8rem",
-            fontWeight: 400,
-            marginBottom: "1.5rem",
+            display: "flex",
+            gap: 8,
+            justifyContent: "center",
+            flexWrap: "wrap",
+            marginTop: "1.5rem",
           }}
         >
-          ♬ Hymnal Collections
-        </h2>
+          {["Praise", "Worship", "Prayer", "Advent", "Easter"].map((tag) => (
+            <button
+              key={tag}
+              onClick={() => navigate(`/english?category=${tag}`)}
+              style={{
+                background: "rgba(96,165,250,0.1)",
+                border: "1px solid rgba(96,165,250,0.2)",
+                color: "rgba(191,219,254,0.8)",
+                padding: "5px 14px",
+                borderRadius: 50,
+                fontSize: 12,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(96,165,250,0.2)";
+                e.currentTarget.style.color = "#BFDBFE";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(96,165,250,0.1)";
+                e.currentTarget.style.color = "rgba(191,219,254,0.8)";
+              }}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      </div>
 
+      {/* ── MAIN CONTENT ──────────────────────────── */}
+      <main
+        style={{ maxWidth: 1100, margin: "0 auto", padding: "2.5rem 1.5rem" }}
+      >
+        {/* Stats bar */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3,1fr)",
+            gap: "1rem",
+            marginBottom: "2.5rem",
+          }}
+        >
+          {[
+            { num: "693", label: "English Hymns", icon: "📖" },
+            { num: "966", label: "Telugu Hymns", icon: "📿" },
+            { num: "1659", label: "Total Songs", icon: "🎵" },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              style={{
+                background: "var(--bg-card)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                padding: "1.25rem",
+                textAlign: "center",
+                boxShadow: "var(--shadow-sm)",
+              }}
+            >
+              <div style={{ fontSize: 24, marginBottom: 4 }}>{stat.icon}</div>
+              <div
+                style={{
+                  fontFamily: "Crimson Pro, serif",
+                  fontSize: "1.8rem",
+                  fontWeight: 400,
+                  color: "var(--accent)",
+                  lineHeight: 1,
+                }}
+              >
+                {stat.num}
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-muted)",
+                  marginTop: 4,
+                }}
+              >
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Hymnal cards */}
+        <SectionHeader title="♬ Hymnal Collections" />
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
-            gap: "1.5rem",
-            marginBottom: "3rem",
+            gap: "1.25rem",
+            marginBottom: "2.5rem",
           }}
         >
-          <div
+          <HymnalCard
+            gradient={`linear-gradient(145deg, var(--card-en-from), var(--card-en-to))`}
+            count="693"
+            countLabel="Hymns"
+            icon="📖"
+            title="English Hymnal"
+            desc="Complete SDA English hymnal with full lyrics, chorus, and presentation mode"
+            cta="Browse English Hymns →"
+            ctaColor="var(--blue-300)"
             onClick={() => navigate("/english")}
-            style={{
-              background: "linear-gradient(145deg, #0F1E3A, #243B5E)",
-              borderRadius: 12,
-              cursor: "pointer",
-              overflow: "hidden",
-              transition: "transform 0.2s",
-              boxShadow: "0 4px 24px rgba(15,30,58,0.12)",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.transform = "translateY(-4px)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.transform = "translateY(0)")
-            }
-          >
-            <div style={{ padding: "2rem", display: "flex", gap: "1.5rem" }}>
-              <div>
-                <div
-                  style={{
-                    fontFamily: "Crimson Pro, serif",
-                    fontSize: "2.5rem",
-                    fontWeight: 300,
-                    color: "#E8D48B",
-                  }}
-                >
-                  600+
-                </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "rgba(232,212,139,0.5)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                  }}
-                >
-                  Hymns
-                </div>
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontSize: "1.2rem",
-                    fontWeight: 600,
-                    color: "#E8D48B",
-                    marginBottom: 4,
-                  }}
-                >
-                  📖 English Hymnal
-                </div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: "rgba(232,212,139,0.6)",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  Complete SDA English hymnal with full lyrics and presentation
-                  mode
-                </div>
-              </div>
-            </div>
-            <div
-              style={{
-                borderTop: "1px solid rgba(232,212,139,0.1)",
-                padding: "12px 2rem",
-                color: "#C9A84C",
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              Browse English Hymns →
-            </div>
-          </div>
-
-          <div
+          />
+          <HymnalCard
+            gradient={`linear-gradient(145deg, var(--card-te-from), var(--card-te-to))`}
+            count="966"
+            countLabel="భజనలు"
+            icon="📿"
+            title="Telugu Hymnal"
+            desc="తెలుగు SDA భజన పుస్తకం - పూర్తి సాహిత్యంతో"
+            cta="Browse Telugu Hymns →"
+            ctaColor="#6EE7B7"
             onClick={() => navigate("/telugu")}
-            style={{
-              background: "linear-gradient(145deg, #1A3527, #2E5C45)",
-              borderRadius: 12,
-              cursor: "pointer",
-              overflow: "hidden",
-              boxShadow: "0 4px 24px rgba(15,30,58,0.12)",
-              transition: "transform 0.2s",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.transform = "translateY(-4px)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.transform = "translateY(0)")
-            }
-          >
-            <div style={{ padding: "2rem", display: "flex", gap: "1.5rem" }}>
-              <div>
-                <div
-                  style={{
-                    fontFamily: "Crimson Pro, serif",
-                    fontSize: "2.5rem",
-                    fontWeight: 300,
-                    color: "#A8E6D4",
-                  }}
-                >
-                  966
-                </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "rgba(174,230,212,0.5)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                  }}
-                >
-                  భజనలు
-                </div>
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontSize: "1.2rem",
-                    fontWeight: 600,
-                    color: "#A8E6D4",
-                    marginBottom: 4,
-                  }}
-                >
-                  📿 Telugu Hymnal
-                </div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: "rgba(174,230,212,0.6)",
-                    lineHeight: 1.5,
-                    fontFamily: "Noto Sans Telugu, sans-serif",
-                  }}
-                >
-                  తెలుగు SDA భజన పుస్తకం - పూర్తి సాహిత్యంతో
-                </div>
-              </div>
-            </div>
-            <div
-              style={{
-                borderTop: "1px solid rgba(174,230,212,0.1)",
-                padding: "12px 2rem",
-                color: "#4AA897",
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              Browse Telugu Hymns →
-            </div>
-          </div>
+            descTelugu
+          />
         </div>
 
-        {/* Popular Songs */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "baseline",
-            marginBottom: "1.5rem",
-          }}
-        >
-          <h2
-            style={{
-              fontFamily: "Crimson Pro, serif",
-              fontSize: "1.8rem",
-              fontWeight: 400,
-            }}
-          >
-            ⭐ Popular Hymns
-          </h2>
-          <button
-            onClick={() => navigate("/english")}
-            style={{
-              color: "var(--gold)",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 13,
-            }}
-          >
-            View all →
-          </button>
-        </div>
+        {/* Popular songs */}
+        <SectionHeader
+          title="⭐ Popular Hymns"
+          action="View all →"
+          onAction={() => navigate("/english")}
+        />
         <SongList songs={popular} onSelect={(id) => navigate(`/song/${id}`)} />
       </main>
+
+      {/* Footer */}
+      <footer
+        style={{
+          background: "var(--nav-bg)",
+          color: "var(--nav-text-muted)",
+          textAlign: "center",
+          padding: "2.5rem 2rem",
+          marginTop: "3rem",
+        }}
+      >
+        <div style={{ fontSize: 28, marginBottom: "0.75rem", opacity: 0.5 }}>
+          ✝
+        </div>
+        <p
+          style={{ color: "var(--nav-text)", fontWeight: 500, marginBottom: 4 }}
+        >
+          SDA Hymnal
+        </p>
+        <p style={{ fontSize: 13 }}>
+          Seventh-day Adventist · English & Telugu · Worship & Praise
+        </p>
+        <p style={{ fontSize: 11, marginTop: "0.75rem", opacity: 0.4 }}>
+          Built with love for the congregation
+        </p>
+      </footer>
     </div>
   );
 }
 
-function SongList({
+/* ── REUSABLE COMPONENTS ──────────────────────────── */
+
+function SectionHeader({
+  title,
+  action,
+  onAction,
+}: {
+  title: string;
+  action?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "baseline",
+        justifyContent: "space-between",
+        marginBottom: "1rem",
+      }}
+    >
+      <h2
+        style={{
+          fontFamily: "Crimson Pro, serif",
+          fontSize: "1.6rem",
+          fontWeight: 400,
+          color: "var(--text-primary)",
+        }}
+      >
+        {title}
+      </h2>
+      {action && (
+        <button
+          onClick={onAction}
+          style={{
+            background: "none",
+            border: "none",
+            color: "var(--accent)",
+            fontSize: 13,
+            cursor: "pointer",
+            fontFamily: "inherit",
+            fontWeight: 500,
+          }}
+        >
+          {action}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function HymnalCard({
+  gradient,
+  count,
+  countLabel,
+  icon,
+  title,
+  desc,
+  cta,
+  ctaColor,
+  onClick,
+  descTelugu,
+}: any) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: gradient,
+        borderRadius: "var(--radius)",
+        cursor: "pointer",
+        overflow: "hidden",
+        transform: hovered ? "translateY(-4px)" : "translateY(0)",
+        boxShadow: hovered ? "var(--shadow-lg)" : "var(--shadow)",
+        transition: "transform 0.25s, box-shadow 0.25s",
+      }}
+    >
+      <div
+        style={{
+          padding: "1.75rem",
+          display: "flex",
+          gap: "1.25rem",
+          alignItems: "flex-start",
+        }}
+      >
+        <div style={{ flexShrink: 0 }}>
+          <div
+            style={{
+              fontFamily: "Crimson Pro, serif",
+              fontSize: "2.2rem",
+              fontWeight: 300,
+              color: "rgba(255,255,255,0.9)",
+              lineHeight: 1,
+            }}
+          >
+            {count}
+          </div>
+          <div
+            style={{
+              fontSize: 10,
+              color: "rgba(255,255,255,0.4)",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              marginTop: 2,
+            }}
+          >
+            {countLabel}
+          </div>
+        </div>
+        <div>
+          <div
+            style={{
+              fontSize: "1.1rem",
+              fontWeight: 600,
+              color: "rgba(255,255,255,0.95)",
+              marginBottom: 6,
+            }}
+          >
+            {icon} {title}
+          </div>
+          <div
+            style={{
+              fontSize: 13,
+              color: "rgba(255,255,255,0.6)",
+              lineHeight: 1.5,
+              fontFamily: descTelugu
+                ? "Noto Sans Telugu, sans-serif"
+                : "inherit",
+            }}
+          >
+            {desc}
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          padding: "11px 1.75rem",
+          color: ctaColor,
+          fontSize: 13,
+          fontWeight: 600,
+        }}
+      >
+        {cta}
+      </div>
+    </div>
+  );
+}
+
+export function SongList({
   songs,
   onSelect,
 }: {
@@ -373,36 +575,46 @@ function SongList({
         style={{
           textAlign: "center",
           padding: "3rem",
-          color: "var(--text-soft)",
+          color: "var(--text-muted)",
+          background: "var(--bg-card)",
+          borderRadius: "var(--radius)",
+          border: "1px solid var(--border)",
         }}
       >
-        Loading hymns...
+        <div
+          style={{ fontSize: "2rem", marginBottom: "0.75rem", opacity: 0.4 }}
+        >
+          🎵
+        </div>
+        <p>Loading hymns...</p>
       </div>
     );
   return (
     <div
       style={{
-        background: "var(--cream-mid)",
-        border: "1px solid var(--parchment)",
-        borderRadius: 12,
+        background: "var(--bg-card)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius)",
         overflow: "hidden",
+        boxShadow: "var(--shadow-sm)",
       }}
     >
-      {songs.map((s) => (
+      {songs.map((s, i) => (
         <div
           key={s.id}
           onClick={() => onSelect(s.id)}
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 16,
-            padding: "14px 20px",
-            borderBottom: "1px solid var(--parchment)",
+            gap: 14,
+            padding: "13px 18px",
+            borderBottom:
+              i < songs.length - 1 ? "1px solid var(--border)" : "none",
             cursor: "pointer",
             transition: "background 0.15s",
           }}
           onMouseEnter={(e) =>
-            (e.currentTarget.style.background = "var(--parchment)")
+            (e.currentTarget.style.background = "var(--bg-hover)")
           }
           onMouseLeave={(e) =>
             (e.currentTarget.style.background = "transparent")
@@ -410,24 +622,48 @@ function SongList({
         >
           <div
             style={{
-              width: 40,
-              color: "var(--gold)",
+              width: 38,
+              color: "var(--num-color)",
               fontWeight: 600,
-              fontSize: 15,
               fontFamily: "Crimson Pro, serif",
+              fontSize: 15,
+              flexShrink: 0,
             }}
           >
             {s.num}
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 500 }}>{s.title}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div
-              style={{ fontSize: 12, color: "var(--text-soft)", marginTop: 2 }}
+              style={{
+                fontSize: 14,
+                fontWeight: 500,
+                color: "var(--text-primary)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                fontFamily:
+                  s.lang === "te" ? "Noto Sans Telugu, sans-serif" : "inherit",
+              }}
             >
-              English
+              {s.title}
+            </div>
+            <div
+              style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 2 }}
+            >
+              {s.lang === "te" ? "తెలుగు" : "English"}{" "}
+              {s.has_chorus && "· Refrain"}
             </div>
           </div>
-          <div style={{ color: "var(--gold)", opacity: 0.5 }}>›</div>
+          <div
+            style={{
+              color: "var(--accent)",
+              opacity: 0.5,
+              fontSize: 18,
+              flexShrink: 0,
+            }}
+          >
+            ›
+          </div>
         </div>
       ))}
     </div>

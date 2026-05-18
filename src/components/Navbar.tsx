@@ -1,89 +1,137 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { useTheme } from "../contexts/ThemeContext";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toggleTheme, isDark } = useTheme();
+
+  const links = [
+    { label: "Home", path: "/" },
+    { label: "English", path: "/english" },
+    { label: "తెలుగు", path: "/telugu" },
+  ];
 
   return (
     <nav
       style={{
-        background: "var(--navy)",
-        padding: "0 2rem",
+        background: "var(--nav-bg)",
+        padding: "0 1.5rem",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         position: "sticky",
         top: 0,
         zIndex: 100,
-        boxShadow: "0 2px 20px rgba(0,0,0,0.3)",
+        boxShadow: "0 1px 0 rgba(255,255,255,0.06), var(--shadow)",
+        height: 60,
       }}
     >
+      {/* Brand */}
       <div
         onClick={() => navigate("/")}
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 12,
-          padding: "14px 0",
+          gap: 10,
           cursor: "pointer",
+          textDecoration: "none",
         }}
       >
         <div
           style={{
-            width: 36,
-            height: 36,
-            background: "linear-gradient(135deg, #C9A84C, #E8D48B)",
+            width: 34,
+            height: 34,
+            background:
+              "linear-gradient(135deg, var(--gold), var(--gold-light))",
             borderRadius: 8,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 18,
-            color: "var(--navy)",
+            fontSize: 16,
+            color: "#0F172A",
             fontWeight: 700,
+            flexShrink: 0,
+            boxShadow: "0 2px 8px rgba(201,168,76,0.4)",
           }}
         >
           ✝
         </div>
         <div>
-          <div style={{ color: "#E8D48B", fontSize: 17, fontWeight: 600 }}>
+          <div
+            style={{
+              color: "var(--nav-text)",
+              fontSize: 15,
+              fontWeight: 600,
+              letterSpacing: "-0.01em",
+              lineHeight: 1.2,
+            }}
+          >
             SDA Hymnal
           </div>
-          <div style={{ color: "rgba(232,212,139,0.5)", fontSize: 11 }}>
+          <div
+            style={{
+              color: "var(--nav-text-muted)",
+              fontSize: 10,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
             Seventh-day Adventist
           </div>
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 4 }}>
-        {[
-          { label: "Home", path: "/" },
-          { label: "English", path: "/english" },
-          { label: "Telugu", path: "/telugu" },
-        ].map((link) => (
-          <button
-            key={link.path}
-            onClick={() => navigate(link.path)}
-            style={{
-              background:
-                location.pathname === link.path
-                  ? "rgba(201,168,76,0.2)"
-                  : "transparent",
-              border: "none",
-              color:
-                location.pathname === link.path
-                  ? "#E8D48B"
-                  : "rgba(232,212,139,0.6)",
-              padding: "8px 16px",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontSize: 14,
-              fontFamily: "inherit",
-            }}
-          >
-            {link.label}
-          </button>
-        ))}
+      {/* Links */}
+      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        {links.map((link) => {
+          const isActive = location.pathname === link.path;
+          return (
+            <button
+              key={link.path}
+              onClick={() => navigate(link.path)}
+              style={{
+                background: isActive ? "var(--nav-active-bg)" : "transparent",
+                border: "none",
+                color: isActive ? "var(--nav-text)" : "var(--nav-text-muted)",
+                padding: "7px 14px",
+                borderRadius: 8,
+                cursor: "pointer",
+                fontSize: 14,
+                fontWeight: isActive ? 600 : 400,
+                fontFamily: "inherit",
+                letterSpacing: link.path === "/telugu" ? "0.02em" : 0,
+                transition: "all 0.15s",
+              }}
+            >
+              {link.label}
+            </button>
+          );
+        })}
       </div>
+
+      {/* Dark mode toggle */}
+      <button
+        onClick={toggleTheme}
+        title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        style={{
+          background: "var(--nav-active-bg)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          color: "var(--nav-text)",
+          width: 38,
+          height: 38,
+          borderRadius: 8,
+          cursor: "pointer",
+          fontSize: 17,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "all 0.2s",
+          flexShrink: 0,
+        }}
+      >
+        {isDark ? "☀" : "☽"}
+      </button>
     </nav>
   );
 }
