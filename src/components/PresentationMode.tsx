@@ -33,12 +33,13 @@ function buildSlides(song: Song): Slide[] {
       });
     });
   }
-
   return slides;
 }
 
 const FS_KEY = "sda_lyrics_fontsize";
 const TS_KEY = "sda_title_fontsize";
+const DEFAULT_LYRICS = 48;
+const DEFAULT_TITLE = 42;
 
 export default function PresentationMode({
   song,
@@ -50,12 +51,14 @@ export default function PresentationMode({
   const slides = buildSlides(song);
   const [current, setCurrent] = useState(0);
   const [lyricsSize, setLyricsSize] = useState(
-    () => Number(localStorage.getItem(FS_KEY)) || 54,
+    () => Number(localStorage.getItem(FS_KEY)) || DEFAULT_LYRICS,
   );
   const [titleSize, setTitleSize] = useState(
-    () => Number(localStorage.getItem(TS_KEY)) || 56,
+    () => Number(localStorage.getItem(TS_KEY)) || DEFAULT_TITLE,
   );
   const [showHint, setShowHint] = useState(true);
+  const [showControls, setShowControls] = useState(false); // briefly visible on hover/tap
+  const controlTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStart = useRef({ x: 0, y: 0 });
 
   const next = useCallback(
@@ -64,7 +67,7 @@ export default function PresentationMode({
   );
   const prev = useCallback(() => setCurrent((c) => Math.max(0, c - 1)), []);
 
-  // Persist font sizes (like adventisthymns cookies)
+  // Persist font sizes
   useEffect(() => {
     localStorage.setItem(FS_KEY, String(lyricsSize));
   }, [lyricsSize]);
@@ -72,16 +75,23 @@ export default function PresentationMode({
     localStorage.setItem(TS_KEY, String(titleSize));
   }, [titleSize]);
 
-  // Hide hint after 4s
+  // Hide hint after 3s
   useEffect(() => {
-    const t = setTimeout(() => setShowHint(false), 4000);
+    const t = setTimeout(() => setShowHint(false), 3500);
     return () => clearTimeout(t);
   }, []);
 
-  // Keyboard — exact same shortcuts as adventisthymns
+  // Show controls briefly on mouse move (auto-hide after 2.5s)
+  const flashControls = useCallback(() => {
+    setShowControls(true);
+    if (controlTimer.current) clearTimeout(controlTimer.current);
+    controlTimer.current = setTimeout(() => setShowControls(false), 2500);
+  }, []);
+
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Navigation
+      flashControls();
       if (
         e.key === "ArrowRight" ||
         e.key === "ArrowDown" ||
@@ -99,35 +109,34 @@ export default function PresentationMode({
       if (e.key === "Home") setCurrent(0);
       if (e.key === "End") setCurrent(slides.length - 1);
 
-      // Font size — matches adventisthymns Ctrl + / Ctrl - / Ctrl 0
+      // Font — Ctrl +/-/0
       if (e.ctrlKey && (e.key === "=" || e.key === "+")) {
         e.preventDefault();
         setLyricsSize((s) => Math.min(s + 3, 120));
-        setTitleSize((s) => Math.min(s + 1, 100));
+        setTitleSize((s) => Math.min(s + 2, 100));
       }
       if (e.ctrlKey && e.key === "-") {
         e.preventDefault();
-        setLyricsSize((s) => Math.max(s - 3, 20));
-        setTitleSize((s) => Math.max(s - 1, 18));
+        setLyricsSize((s) => Math.max(s - 3, 18));
+        setTitleSize((s) => Math.max(s - 2, 16));
       }
       if (e.ctrlKey && e.key === "0") {
         e.preventDefault();
-        setLyricsSize(54);
-        setTitleSize(56);
+        setLyricsSize(DEFAULT_LYRICS);
+        setTitleSize(DEFAULT_TITLE);
       }
 
-      // Jump to verse: press 1-9 (matches adventisthymns)
+      // Jump to verse 1–9
       if (!e.ctrlKey && !e.altKey && e.key >= "1" && e.key <= "9") {
-        const verseNum = parseInt(e.key);
-        const idx = slides.findIndex((s) => s.verseNum === verseNum);
+        const idx = slides.findIndex((s) => s.verseNum === parseInt(e.key));
         if (idx > -1) setCurrent(idx);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [next, prev, onClose, slides]);
+  }, [next, prev, onClose, slides, flashControls]);
 
-  // Auto landscape + fullscreen on mobile, fullscreen on desktop
+  // Auto landscape + fullscreen
   useEffect(() => {
     const enter = async () => {
       try {
@@ -152,263 +161,395 @@ export default function PresentationMode({
   const isTelugu = song.lang === "te";
   const lyricsFont = isTelugu
     ? "'Noto Sans Telugu', sans-serif"
-    : "'Georgia', 'Crimson Pro', serif";
+    : "'Georgia', serif";
   const titleFont = isTelugu
     ? "'Noto Sans Telugu', sans-serif"
-    : "'Georgia', 'Crimson Pro', serif";
+    : "'Georgia', serif";
   const progressPct =
     slides.length > 1 ? ((current + 1) / slides.length) * 100 : 100;
 
   return (
     <div
-      className="present-root"
+      className="pr"
       onClick={next}
+      onMouseMove={flashControls}
       onTouchStart={(e) => {
         touchStart.current = {
           x: e.changedTouches[0].clientX,
           y: e.changedTouches[0].clientY,
         };
+        flashControls();
       }}
       onTouchEnd={(e) => {
         const dx = e.changedTouches[0].clientX - touchStart.current.x;
         const dy = e.changedTouches[0].clientY - touchStart.current.y;
         if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-          if (dx < 0) next();
-          else prev();
+          dx < 0 ? next() : prev();
         }
       }}
     >
-      {/* ─── TOP BAR ─────────────────────────────────── */}
-      <div className="present-topbar" onClick={(e) => e.stopPropagation()}>
+      {/* ── OVERLAY CONTROLS (auto-hide) ─────────────── */}
+      <div className={`pr-overlay ${showControls ? "visible" : ""}`}>
+        {/* Close — top left */}
         <button
-          className="present-btn"
-          onClick={onClose}
+          className="pr-close"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
           title="Close (Esc)"
-          aria-label="Close"
+          aria-label="Close presentation"
         >
+          {/* X icon SVG */}
           <svg
-            width="18"
-            height="18"
+            width="16"
+            height="16"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="2.5"
             strokeLinecap="round"
+            strokeLinejoin="round"
           >
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
 
-        <div className="present-counter">
-          {current + 1} / {slides.length}
+        {/* Slide counter — top centre */}
+        <div className="pr-counter">
+          {/* Dots for small counts, number for large */}
+          {slides.length <= 12 ? (
+            <div className="pr-dots">
+              {slides.map((_, i) => (
+                <div
+                  key={i}
+                  className={`pr-dot ${i === current ? "active" : ""} ${slides[i].type === "refrain" ? "refrain" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrent(i);
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <span className="pr-num">
+              {current + 1} <span style={{ opacity: 0.4 }}>/</span>{" "}
+              {slides.length}
+            </span>
+          )}
         </div>
 
-        <div className="present-font-controls">
+        {/* Font controls — top right */}
+        <div className="pr-font-ctrl" onClick={(e) => e.stopPropagation()}>
+          {/* Decrease */}
           <button
-            className="present-btn small"
+            className="pr-icon-btn"
             onClick={() => {
-              setLyricsSize((s) => Math.max(s - 3, 20));
-              setTitleSize((s) => Math.max(s - 1, 18));
+              setLyricsSize((s) => Math.max(s - 3, 18));
+              setTitleSize((s) => Math.max(s - 2, 16));
             }}
-            title="Decrease (Ctrl -)"
+            title="Smaller font (Ctrl −)"
+            aria-label="Decrease font size"
           >
-            A−
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <line x1="8" y1="11" x2="14" y2="11" />
+            </svg>
           </button>
+
+          {/* Reset */}
           <button
-            className="present-btn small"
+            className="pr-icon-btn"
             onClick={() => {
-              setLyricsSize(54);
-              setTitleSize(56);
+              setLyricsSize(DEFAULT_LYRICS);
+              setTitleSize(DEFAULT_TITLE);
             }}
-            title="Reset (Ctrl 0)"
-            style={{ fontSize: 11 }}
+            title="Reset font size (Ctrl 0)"
+            aria-label="Reset font size"
           >
-            reset
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
           </button>
+
+          {/* Increase */}
           <button
-            className="present-btn small"
+            className="pr-icon-btn"
             onClick={() => {
               setLyricsSize((s) => Math.min(s + 3, 120));
-              setTitleSize((s) => Math.min(s + 1, 100));
+              setTitleSize((s) => Math.min(s + 2, 100));
             }}
-            title="Increase (Ctrl +)"
+            title="Larger font (Ctrl +)"
+            aria-label="Increase font size"
           >
-            A+
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <line x1="11" y1="8" x2="11" y2="14" />
+              <line x1="8" y1="11" x2="14" y2="11" />
+            </svg>
           </button>
         </div>
       </div>
 
-      {/* ─── SLIDE CONTENT ─────────────────────────────── */}
-      <div className="present-slide">
-        {/* Song title — shown on EVERY slide (like adventisthymns) */}
+      {/* ── SLIDE CONTENT ──────────────────────────── */}
+      <div className="pr-slide">
         <h1
-          className="present-title"
+          className="pr-title"
           style={{ fontFamily: titleFont, fontSize: `${titleSize}px` }}
         >
           {song.title}
         </h1>
-
-        {/* Label: Verse 1 / Refrain */}
-        <h2 className="present-label">{slide.label}</h2>
-
-        {/* Lyrics */}
+        <h2 className={`pr-label ${slide.type === "refrain" ? "refrain" : ""}`}>
+          {slide.label}
+        </h2>
         <p
-          className={`present-lyrics ${slide.type === "refrain" ? "refrain" : ""}`}
+          className={`pr-lyrics ${slide.type === "refrain" ? "refrain" : ""}`}
           style={{
             fontFamily: lyricsFont,
             fontSize: `${lyricsSize}px`,
-            lineHeight: isTelugu ? 2 : 1.4,
+            lineHeight: isTelugu ? 1.9 : 1.35,
           }}
         >
-          {slide.text.split("\n").map((line, i) => (
+          {slide.text.split("\n").map((line, i, arr) => (
             <span key={i}>
               {line || "\u00A0"}
-              {i < slide.text.split("\n").length - 1 && <br />}
+              {i < arr.length - 1 && <br />}
             </span>
           ))}
         </p>
       </div>
 
-      {/* ─── BOTTOM PROGRESS BAR ──────────────────────── */}
-      <div className="present-progress">
+      {/* ── PROGRESS BAR ───────────────────────────── */}
+      <div className="pr-progress">
         <div
-          className="present-progress-fill"
+          className="pr-progress-fill"
           style={{ width: `${progressPct}%` }}
         />
       </div>
 
-      {/* ─── HINT ─────────────────────────────────────── */}
-      {showHint && current === 0 && (
-        <div className="present-hint">
-          tap or swipe · arrow keys · 1–9 jump verse · Ctrl ± font
+      {/* ── FIRST-USE HINT ─────────────────────────── */}
+      {showHint && (
+        <div className="pr-hint">
+          <span>← →</span> navigate &nbsp;·&nbsp;
+          <span>1 – 9</span> jump verse &nbsp;·&nbsp;
+          <span>Ctrl ±</span> font size &nbsp;·&nbsp;
+          <span>Esc</span> close
         </div>
       )}
 
       <style>{`
-        .present-root {
+        /* Root */
+        .pr {
           position: fixed; inset: 0;
           background: #000;
           z-index: 1000;
           display: flex; flex-direction: column;
-          user-select: none; cursor: pointer;
+          align-items: center; justify-content: center;
+          cursor: none;
           overflow: hidden;
           -webkit-tap-highlight-color: transparent;
+          user-select: none;
         }
+        .pr:hover { cursor: default; }
 
-        .present-topbar {
-          position: absolute; top: 0; left: 0; right: 0;
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 14px 18px;
-          z-index: 5;
+        /* Overlay (auto-hide) */
+        .pr-overlay {
+          position: absolute; inset: 0;
+          display: flex; align-items: flex-start;
+          justify-content: space-between;
+          padding: 18px 20px;
+          z-index: 10;
           pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.35s ease;
         }
-        .present-topbar > * { pointer-events: auto; }
+        .pr-overlay.visible { opacity: 1; pointer-events: auto; }
 
-        .present-btn {
+        /* Close button */
+        .pr-close {
+          width: 40px; height: 40px;
+          border-radius: 10px;
           background: rgba(255,255,255,0.08);
           border: 1px solid rgba(255,255,255,0.12);
           color: rgba(255,255,255,0.7);
-          width: 38px; height: 38px;
-          border-radius: 8px;
           cursor: pointer;
-          font-size: 15px;
-          font-family: inherit;
-          font-weight: 500;
           display: flex; align-items: center; justify-content: center;
-          transition: all 0.15s;
+          transition: background 0.15s, color 0.15s, transform 0.15s;
+          backdrop-filter: blur(8px);
         }
-        .present-btn:hover {
-          background: rgba(255,255,255,0.15);
-          color: #fff;
-        }
-        .present-btn.small {
-          width: 36px; height: 36px;
-          font-size: 13px;
-        }
-
-        .present-counter {
-          color: rgba(255,255,255,0.4);
-          font-size: 13px;
-          font-family: 'DM Sans', sans-serif;
-          letter-spacing: 0.04em;
+        .pr-close:hover {
+          background: rgba(239,68,68,0.25);
+          border-color: rgba(239,68,68,0.4);
+          color: #FCA5A5;
+          transform: scale(1.05);
         }
 
-        .present-font-controls {
-          display: flex; gap: 6px;
+        /* Counter / dots */
+        .pr-counter {
+          display: flex; align-items: center; justify-content: center;
+          flex: 1; padding: 0 1rem;
         }
-
-        .present-slide {
-          flex: 1;
-          display: flex; flex-direction: column;
-          align-items: center; justify-content: center;
-          padding: 80px 6vw 60px;
-          text-align: center;
-          width: 100%;
+        .pr-dots {
+          display: flex; gap: 7px; align-items: center;
         }
-
-        .present-title {
-          color: rgba(255,255,255,0.92);
-          font-weight: 400;
-          line-height: 1.15;
-          margin: 0 0 1.2rem 0;
-          letter-spacing: -0.005em;
+        .pr-dot {
+          width: 7px; height: 7px; border-radius: 50%;
+          background: rgba(255,255,255,0.2);
+          cursor: pointer;
+          transition: all 0.25s;
         }
-
-        .present-label {
+        .pr-dot.active {
+          background: rgba(255,255,255,0.85);
+          transform: scale(1.25);
+        }
+        .pr-dot.refrain.active {
+          background: #FDE68A;
+        }
+        .pr-dot.refrain {
+          background: rgba(253,230,138,0.25);
+          border-radius: 2px;
+          width: 9px; height: 7px;
+        }
+        .pr-num {
           color: rgba(255,255,255,0.45);
           font-family: 'DM Sans', sans-serif;
-          font-size: clamp(14px, 1.5vw, 18px);
-          font-weight: 500;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          margin: 0 0 2.2rem 0;
+          font-size: 14px; letter-spacing: 0.06em;
         }
 
-        .present-lyrics {
+        /* Font controls */
+        .pr-font-ctrl {
+          display: flex; gap: 6px; align-items: center;
+        }
+        .pr-icon-btn {
+          width: 40px; height: 40px;
+          border-radius: 10px;
+          background: rgba(255,255,255,0.08);
+          border: 1px solid rgba(255,255,255,0.12);
+          color: rgba(255,255,255,0.65);
+          cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          transition: background 0.15s, color 0.15s, transform 0.15s;
+          backdrop-filter: blur(8px);
+        }
+        .pr-icon-btn:hover {
+          background: rgba(255,255,255,0.15);
+          color: #fff;
+          transform: scale(1.05);
+        }
+        .pr-icon-btn:active { transform: scale(0.95); }
+
+        /* Slide */
+        .pr-slide {
+          width: 100%; max-width: 1400px;
+          padding: 80px 7vw 56px;
+          text-align: center;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          flex: 1;
+        }
+
+        /* Title */
+        .pr-title {
+          color: rgba(255,255,255,0.88);
+          font-weight: 400;
+          line-height: 1.2;
+          margin: 0 0 0.9rem 0;
+          letter-spacing: -0.01em;
+        }
+
+        /* Label */
+        .pr-label {
+          font-family: 'DM Sans', sans-serif;
+          font-size: clamp(12px, 1.4vw, 16px);
+          font-weight: 500;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: rgba(255,255,255,0.35);
+          margin: 0 0 2rem 0;
+        }
+        .pr-label.refrain {
+          color: rgba(253,230,138,0.6);
+          letter-spacing: 0.18em;
+        }
+
+        /* Lyrics */
+        .pr-lyrics {
           color: #FFFFFF;
           font-weight: 400;
           margin: 0;
-          max-width: 1400px;
+          max-width: 1200px;
+          width: 100%;
         }
-        .present-lyrics.refrain {
-          color: #FFE898;
+        .pr-lyrics.refrain {
+          color: #FEF3C7;
           font-style: italic;
         }
 
-        .present-progress {
-          position: absolute;
-          bottom: 0; left: 0; right: 0;
+        /* Progress bar */
+        .pr-progress {
+          position: absolute; bottom: 0; left: 0; right: 0;
           height: 3px;
-          background: rgba(255,255,255,0.08);
-          z-index: 4;
+          background: rgba(255,255,255,0.06);
+          z-index: 5;
         }
-        .present-progress-fill {
+        .pr-progress-fill {
           height: 100%;
-          background: rgba(255,255,255,0.7);
-          transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+          background: rgba(255,255,255,0.5);
+          transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .present-hint {
-          position: absolute;
-          bottom: 20px;
+        /* Hint */
+        .pr-hint {
+          position: absolute; bottom: 22px;
           left: 50%; transform: translateX(-50%);
-          color: rgba(255,255,255,0.35);
+          color: rgba(255,255,255,0.3);
           font-family: 'DM Sans', sans-serif;
-          font-size: 12px;
-          letter-spacing: 0.05em;
-          animation: fadeOutHint 4s forwards;
-          pointer-events: none;
-          white-space: nowrap;
+          font-size: 12px; letter-spacing: 0.04em;
+          animation: hintFade 3.5s forwards;
+          pointer-events: none; white-space: nowrap;
+        }
+        .pr-hint span {
+          color: rgba(255,255,255,0.55);
+          font-weight: 600;
         }
 
-        @keyframes fadeOutHint {
-          0%, 60% { opacity: 1; }
+        @keyframes hintFade {
+          0%, 55% { opacity: 1; }
           100% { opacity: 0; }
         }
 
         @media (max-width: 600px) {
-          .present-slide { padding: 70px 4vw 50px; }
+          .pr-slide { padding: 72px 5vw 48px; }
+          .pr-icon-btn, .pr-close { width: 36px; height: 36px; }
         }
       `}</style>
     </div>
