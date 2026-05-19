@@ -5,6 +5,7 @@ export interface Stanza {
   song_id: string;
   label: string;
   text: string;
+  translit?: string; // ← add this
   is_chorus: boolean;
   order_index: number;
 }

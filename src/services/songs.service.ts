@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import type { Song, SongSummary } from "../types/song.types";
+import { transliterateStanza } from "../utils/transliterate-telugu";
 
 export async function getSongs(
   lang: "en" | "te",
@@ -36,6 +37,13 @@ export async function getSongById(id: string): Promise<Song> {
 
   // Sort stanzas by order_index
   data.stanzas.sort((a: any, b: any) => a.order_index - b.order_index);
+  // Auto-generate transliteration for Telugu songs
+  if (data.lang === "te") {
+    data.stanzas = data.stanzas.map((st: any) => ({
+      ...st,
+      translit: transliterateStanza(st.text),
+    }));
+  }
   return data;
 }
 

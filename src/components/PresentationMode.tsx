@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Song } from "../types/song.types";
+import { buildBilingualLines } from "../utils/transliterate-telugu";
+import { transliterateLine } from "../utils/transliterate-telugu";
 
 interface Slide {
   type: "verse" | "refrain";
@@ -339,12 +341,40 @@ export default function PresentationMode({
             lineHeight: isTelugu ? 1.9 : 1.35,
           }}
         >
-          {slide.text.split("\n").map((line, i, arr) => (
-            <span key={i}>
-              {line || "\u00A0"}
-              {i < arr.length - 1 && <br />}
-            </span>
-          ))}
+          import {buildBilingualLines} from '../utils/transliterate-telugu' //
+          In the slide content section, replace the lyrics rendering with:
+          {slide.text.split("\n").map((line, idx, arr) => {
+            const isTeluguLine = isTelugu && line.trim();
+            const translit = isTelugu ? transliterateLine(line) : "";
+
+            return (
+              <span key={idx}>
+                {/* Telugu line */}
+                {line || "\u00A0"}
+                {/* Transliteration — every line, below Telugu */}
+                {isTeluguLine && translit && (
+                  <>
+                    <br />
+                    <span
+                      style={{
+                        fontSize: `${Math.round(lyricsSize * 0.55)}px`,
+                        color:
+                          slide.type === "refrain"
+                            ? "rgba(253,230,138,0.55)"
+                            : "rgba(255,255,255,0.38)",
+                        fontStyle: "italic",
+                        fontFamily: "'DM Sans', sans-serif",
+                        letterSpacing: "0.01em",
+                      }}
+                    >
+                      {translit}
+                    </span>
+                  </>
+                )}
+                {idx < arr.length - 1 && <br />}
+              </span>
+            );
+          })}
         </p>
       </div>
 

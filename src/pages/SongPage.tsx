@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getSongById } from "../services/songs.service";
 import type { Song, Stanza } from "../types/song.types";
 import PresentationMode from "../components/PresentationMode";
+import { buildBilingualLines } from "../utils/transliterate-telugu";
 
 export default function SongPage() {
   const { id } = useParams<{ id: string }>();
@@ -287,74 +288,71 @@ function StanzaBlock({
   const teluguFont = "Noto Sans Telugu, sans-serif";
   const serifFont = "Crimson Pro, serif";
 
-  if (stanza.is_chorus) {
-    return (
-      <div
-        style={{
-          background: "var(--chorus-bg)",
-          borderLeft: "3px solid var(--chorus-border)",
-          borderRadius: "0 var(--radius-sm) var(--radius-sm) 0",
-          padding: "1.25rem 1.5rem",
-          margin: "1.5rem 0",
-        }}
-      >
-        <div
-          style={{
-            fontSize: 11,
-            color: "var(--accent)",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            fontWeight: 600,
-            marginBottom: "0.75rem",
-          }}
-        >
-          Refrain
-        </div>
-        <div
-          style={{
-            fontFamily: isTelugu ? teluguFont : serifFont,
-            fontSize: isTelugu ? "1.1rem" : "1.2rem",
-            lineHeight: isTelugu ? 2.2 : 1.9,
-            color: "var(--text-primary)",
-            fontWeight: 300,
-            fontStyle: isTelugu ? "normal" : "italic",
-          }}
-        >
-          {stanza.text.split("\n").map((l, i) => (
-            <div key={i}>{l}</div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const lines = isTelugu
+    ? buildBilingualLines(stanza.text)
+    : stanza.text.split("\n").map((l) => ({ telugu: l, translit: "" }));
+
+  const blockStyle = stanza.is_chorus
+    ? {
+        background: "var(--chorus-bg)",
+        borderLeft: "3px solid var(--chorus-border)",
+        borderRadius: "0 var(--radius-sm) var(--radius-sm) 0",
+        padding: "1.25rem 1.5rem",
+        margin: "1.5rem 0",
+      }
+    : { marginBottom: "2rem" };
 
   return (
-    <div style={{ marginBottom: "2rem" }}>
+    <div style={blockStyle}>
       <div
         style={{
           fontSize: 11,
-          color: "var(--text-faint)",
+          color: stanza.is_chorus ? "var(--accent)" : "var(--text-faint)",
           letterSpacing: "0.1em",
           textTransform: "uppercase",
           fontWeight: 600,
           marginBottom: "0.75rem",
         }}
       >
-        {stanza.label}
+        {stanza.is_chorus ? "Refrain" : stanza.label}
       </div>
-      <div
-        style={{
-          fontFamily: isTelugu ? teluguFont : serifFont,
-          fontSize: isTelugu ? "1.15rem" : "1.25rem",
-          lineHeight: isTelugu ? 2.2 : 1.9,
-          color: "var(--text-primary)",
-          fontWeight: 300,
-        }}
-      >
-        {stanza.text.split("\n").map((l, i) => (
-          <div key={i}>{l}</div>
-        ))}
-      </div>
+
+      {lines.map((pair, i) => (
+        <div key={i} style={{ marginBottom: isTelugu ? "0.6rem" : 0 }}>
+          {/* Telugu line */}
+          <div
+            style={{
+              fontFamily: isTelugu ? teluguFont : serifFont,
+              fontSize: isTelugu ? "1.15rem" : "1.25rem",
+              lineHeight: isTelugu ? 1.8 : 1.9,
+              color: "var(--text-primary)",
+              fontWeight: 400,
+              fontStyle: stanza.is_chorus && !isTelugu ? "italic" : "normal",
+            }}
+          >
+            {pair.telugu || "\u00A0"}
+          </div>
+
+          {/* Transliteration line — only for Telugu */}
+          {isTelugu && pair.translit && (
+            <div
+              style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: "0.9rem",
+                lineHeight: 1.5,
+                color: "var(--text-muted)",
+                fontStyle: "italic",
+                marginTop: 2,
+                paddingLeft: 2,
+                borderLeft: "2px solid var(--border)",
+                paddingBottom: 4,
+              }}
+            >
+              {pair.translit}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
