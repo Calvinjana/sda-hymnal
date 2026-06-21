@@ -165,9 +165,6 @@ export default function PresentationMode({
   const translitRefColor = isDark ? "rgba(253,230,138,0.5)" : "#C05A20";
   const labelColor = isDark ? "rgba(255,255,255,0.35)" : "rgba(30,39,97,0.4)";
   const labelRefColor = isDark ? "rgba(253,230,138,0.6)" : "#B84000";
-  const overlayBtn = isDark
-    ? "rgba(255,255,255,0.08) border rgba(255,255,255,0.12)"
-    : "rgba(0,0,0,0.06) border rgba(0,0,0,0.10)";
   const btnColor = isDark ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.5)";
   const dotColor = isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)";
   const dotActive = isDark ? "rgba(255,255,255,0.85)" : "#1E2761";
