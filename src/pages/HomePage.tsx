@@ -16,7 +16,6 @@ export default function HomePage() {
 
   useEffect(() => {
     if (query.length < 2) {
-      setResults([]);
       return;
     }
     const t = setTimeout(async () => {
@@ -67,14 +66,18 @@ export default function HomePage() {
           }}
         />
 
-        <div
-          style={{
-            fontSize: 52,
-            marginBottom: "1.5rem",
-            filter: "drop-shadow(0 4px 16px rgba(201,168,76,0.5))",
-          }}
-        >
-          ✝
+        <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+          <img
+            src="/sda-symbol.svg"
+            alt="SDA Symbol"
+            style={{
+              width: 130,
+              height: 130,
+              filter: `brightness(0) invert(1)
+        drop-shadow(0 0 8px rgba(255,255,255,0.7))`,
+              display: "inline-block",
+            }}
+          />
         </div>
 
         <div

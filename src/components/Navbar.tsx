@@ -40,22 +40,25 @@ export default function Navbar() {
       >
         <div
           style={{
-            width: 34,
-            height: 34,
-            background:
-              "linear-gradient(135deg, var(--gold), var(--gold-light))",
-            borderRadius: 8,
+            width: 40,
+            height: 40,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 16,
-            color: "#0F172A",
-            fontWeight: 700,
-            flexShrink: 0,
-            boxShadow: "0 2px 8px rgba(201,168,76,0.4)",
           }}
         >
-          ✝
+          <img
+            src="/sda-symbol.svg"
+            alt="SDA"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              filter: `brightness(0) invert(1)
+        drop-shadow(0 0 8px rgba(255,255,255,0.7))
+      `,
+            }}
+          />
         </div>
         <div>
           <div
