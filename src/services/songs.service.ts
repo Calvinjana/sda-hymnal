@@ -12,7 +12,7 @@ export async function getSongs(
     .from("songs")
     .select("id, num, title, lang, has_chorus, category_id", { count: "exact" })
     .eq("lang", lang)
-    .order("num");
+    .order("num", { ascending: true });
 
   if (search) {
     query = query.or(`title.ilike.%${search}%,num.eq.${search}`);
