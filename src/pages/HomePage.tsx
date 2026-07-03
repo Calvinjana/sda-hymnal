@@ -303,8 +303,8 @@ export default function HomePage() {
         >
           {[
             { num: "693", label: "English Hymns", icon: "📖" },
-            { num: "966", label: "Telugu Hymns", icon: "📿" },
-            { num: "1659", label: "Total Songs", icon: "🎵" },
+            { num: "620", label: "Telugu Hymns", icon: "📿" },
+            { num: "1313", label: "Total Songs", icon: "🎵" },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -396,8 +396,18 @@ export default function HomePage() {
           marginTop: "3rem",
         }}
       >
-        <div style={{ fontSize: 28, marginBottom: "0.75rem", opacity: 0.5 }}>
-          ✝
+        <div style={{ textAlign: "center", marginBottom: "0.75rem" }}>
+          <img
+            src="/sda-symbol.svg"
+            alt="SDA Symbol"
+            style={{
+              width: 80,
+              height: 80,
+              filter: `brightness(0) invert(1) drop-shadow(0 0 8px rgba(255,255,255,0.7))`,
+              display: "inline-block",
+              opacity: 0.5,
+            }}
+          />
         </div>
         <p
           style={{ color: "var(--nav-text)", fontWeight: 500, marginBottom: 4 }}

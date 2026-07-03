@@ -9,7 +9,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ← change this line to switch between English and Telugu
 //const songs = JSON.parse(readFileSync("./data/english-695-final.json", "utf8"));
-const songs = JSON.parse(readFileSync("./data/telugu-new.json", "utf8"));
+//const songs = JSON.parse(readFileSync("./data/telugu-new.json", "utf8"));
+const songs = JSON.parse(readFileSync("./data/telugu-new2.json", "utf8"));
 
 async function importSongs() {
   console.log(`Starting import of ${songs.length} Telugu songs...\n`);
