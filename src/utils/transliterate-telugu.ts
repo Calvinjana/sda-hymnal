@@ -190,7 +190,7 @@ function transliterateWord(word: string): string {
       const cons = CONSONANTS[cp];
       i++;
       if (i >= cps.length) {
-        out += cons + "u";
+        out += cons + "a";
         continue;
       }
       const nxt = cps[i];
@@ -257,25 +257,4 @@ export function transliterateLine(line: string): string {
 
 export function transliterateStanza(text: string): string {
   return text.split("\n").map(transliterateLine).join("\n");
-}
-
-// Pairs each Telugu line with its transliteration
-export function buildBilingualLines(
-  text: string,
-): { telugu: string; translit: string }[] {
-  return text.split("\n").map((line) => ({
-    telugu: line,
-    translit: transliterateLine(line),
-  }));
-}
-
-// Add transliteration to a full stanza object
-export function addTranslitToStanza(stanza: {
-  text: string;
-  [key: string]: unknown;
-}) {
-  return {
-    ...stanza,
-    translit: transliterateStanza(stanza.text),
-  };
 }

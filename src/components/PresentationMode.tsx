@@ -1,4 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useRef,
+} from "react";
 import type { Song } from "../types/song.types";
 import { transliterateLine } from "../utils/transliterate-telugu";
 import { useTheme } from "../contexts/ThemeContext";
@@ -10,42 +16,149 @@ interface Slide {
   verseNum?: number;
 }
 
+// Telugu-only: how many "lines" (or, when a stanza has no real line breaks,
+// phrase-groups) to show per slide. Smaller chunks = bigger auto-fit font.
+// English stanzas are NEVER chunked — always one slide per stanza.
+const LINES_PER_SLIDE = 2;
+
+function chunkLines(text: string, groupSize = LINES_PER_SLIDE): string[] {
+  // Case 1 — the stanza has real line breaks: chunk by physical lines.
+  if (text.includes("\n")) {
+    const lines = text.split("\n").filter((l) => l.trim());
+    if (lines.length === 0) return [text];
+    const chunks: string[] = [];
+    for (let i = 0; i < lines.length; i += groupSize) {
+      chunks.push(lines.slice(i, i + groupSize).join("\n"));
+    }
+    return chunks;
+  }
+
+  // Case 2 — no real line breaks (most of our OCR'd stanzas). Fall back to
+  // splitting on " - " (dash WITH spaces on both sides), which is how the
+  // hymnal marks phrase boundaries. This deliberately skips dashes with no
+  // surrounding spaces (e.g. "మొక్ష-వాసా"), which are word-internal
+  // hyphens, not phrase breaks.
+  const phrases = text
+    .split(" - ")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (phrases.length <= 1) return [text];
+  const chunks: string[] = [];
+  for (let i = 0; i < phrases.length; i += groupSize) {
+    chunks.push(phrases.slice(i, i + groupSize).join(" - "));
+  }
+  return chunks;
+}
+
 function buildSlides(song: Song): Slide[] {
   const slides: Slide[] = [];
-
-  // Title slide
   slides.push({ type: "title", label: song.num, text: song.title });
 
+  const isTelugu = song.lang === "te";
   const chorus = song.stanzas.find((s) => s.is_chorus);
   const verses = song.stanzas.filter((s) => !s.is_chorus);
 
+  const pushStanza = (
+    text: string,
+    baseLabel: string,
+    type: "verse" | "refrain",
+    verseNum?: number,
+  ) => {
+    if (!isTelugu) {
+      // English: unchanged — whole stanza on one slide.
+      slides.push({ type, label: baseLabel, text, verseNum });
+      return;
+    }
+    const chunks = chunkLines(text);
+    chunks.forEach((chunk, i) => {
+      slides.push({
+        type,
+        label:
+          chunks.length > 1
+            ? `${baseLabel} · ${i + 1}/${chunks.length}`
+            : baseLabel,
+        text: chunk,
+        // Only the first chunk answers the 1–9 "jump to verse" shortcut;
+        // later chunks of the same stanza are reached by continuing forward.
+        verseNum: i === 0 ? verseNum : undefined,
+      });
+    });
+  };
+
   if (song.has_chorus && chorus) {
     verses.forEach((v, i) => {
-      slides.push({
-        type: "verse",
-        label: `Verse ${i + 1}`,
-        text: v.text,
-        verseNum: i + 1,
-      });
-      slides.push({ type: "refrain", label: "Refrain", text: chorus.text });
+      pushStanza(v.text, `Verse ${i + 1}`, "verse", i + 1);
+      pushStanza(chorus.text, "Refrain", "refrain");
     });
   } else {
     song.stanzas.forEach((v, i) => {
-      slides.push({
-        type: v.is_chorus ? "refrain" : "verse",
-        label: v.is_chorus ? "Refrain" : `Verse ${i + 1}`,
-        text: v.text,
-        verseNum: v.is_chorus ? undefined : i + 1,
-      });
+      pushStanza(
+        v.text,
+        v.is_chorus ? "Refrain" : `Verse ${i + 1}`,
+        v.is_chorus ? "refrain" : "verse",
+        v.is_chorus ? undefined : i + 1,
+      );
     });
   }
+
   return slides;
 }
 
-const FS_KEY = "sda_lyrics_fontsize";
-const TS_KEY = "sda_title_fontsize";
-const DEFAULT_LYRICS = 36;
-const DEFAULT_TITLE = 32;
+// ── SHRINK-TO-FIT FONT SIZING ────────────────────────────────────────────
+// Real DOM measurement, not a character-count guess. Guarantees the
+// rendered text never exceeds the available box, for ANY stanza length.
+const MIN_FONT = 14;
+const MAX_FONT = 90;
+
+function useFitFontSize(
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  contentRef: React.RefObject<HTMLDivElement | null>,
+  deps: unknown[],
+) {
+  const [autoSize, setAutoSize] = useState(MAX_FONT);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+    if (!container || !content) return;
+
+    const fits = (px: number) => {
+      content.style.setProperty("--fit", `${px}px`);
+      // Force a synchronous layout read — this is what makes it "real"
+      // measurement instead of a guess.
+      return (
+        content.scrollHeight <= container.clientHeight &&
+        content.scrollWidth <= container.clientWidth
+      );
+    };
+
+    // Fast path: most pallavis/short stanzas fit at MAX_FONT already.
+    if (fits(MAX_FONT)) {
+      setAutoSize(MAX_FONT);
+      return;
+    }
+
+    let lo = MIN_FONT;
+    let hi = MAX_FONT;
+    let best = MIN_FONT;
+
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (fits(mid)) {
+        best = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+
+    content.style.setProperty("--fit", `${best}px`);
+    setAutoSize(best);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  return autoSize;
+}
 
 export default function PresentationMode({
   song,
@@ -59,29 +172,55 @@ export default function PresentationMode({
   const isTelugu = song.lang === "te";
 
   const [current, setCurrent] = useState(0);
-  const [lyricsSize, setLyricsSize] = useState(
-    () => Number(localStorage.getItem(FS_KEY)) || DEFAULT_LYRICS,
-  );
-  const [titleSize, setTitleSize] = useState(
-    () => Number(localStorage.getItem(TS_KEY)) || DEFAULT_TITLE,
-  );
+  const [manualOffset, setManualOffset] = useState(0);
   const [showHint, setShowHint] = useState(true);
   const [showControls, setShowControls] = useState(false);
+  const [screenSize, setScreenSize] = useState({
+    w: window.innerWidth,
+    h: window.innerHeight,
+  });
+
   const controlTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStart = useRef({ x: 0, y: 0 });
+
+  // The measured "box" and the "text" we're fitting into it.
+  const fitContainerRef = useRef<HTMLDivElement>(null);
+  const fitContentRef = useRef<HTMLDivElement>(null);
+
+  const slide = slides[current];
+
+  const autoSize = useFitFontSize(fitContainerRef, fitContentRef, [
+    current,
+    slide.text,
+    screenSize.w,
+    screenSize.h,
+    isTelugu,
+  ]);
+
+  // Manual +/- nudges from the measured baseline. Allowed to exceed the
+  // perfect-fit size on purpose (that's the user overriding auto-fit).
+  const displaySize = Math.min(
+    MAX_FONT,
+    Math.max(MIN_FONT, autoSize + manualOffset),
+  );
+
+  useEffect(() => {
+    const onResize = () =>
+      setScreenSize({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    const content = fitContentRef.current;
+    if (content) content.style.setProperty("--fit", `${displaySize}px`);
+  }, [displaySize]);
 
   const next = useCallback(
     () => setCurrent((c) => Math.min(slides.length - 1, c + 1)),
     [slides.length],
   );
   const prev = useCallback(() => setCurrent((c) => Math.max(0, c - 1)), []);
-
-  useEffect(() => {
-    localStorage.setItem(FS_KEY, String(lyricsSize));
-  }, [lyricsSize]);
-  useEffect(() => {
-    localStorage.setItem(TS_KEY, String(titleSize));
-  }, [titleSize]);
 
   useEffect(() => {
     const t = setTimeout(() => setShowHint(false), 3500);
@@ -110,18 +249,15 @@ export default function PresentationMode({
       if (e.key === "End") setCurrent(slides.length - 1);
       if (e.ctrlKey && (e.key === "=" || e.key === "+")) {
         e.preventDefault();
-        setLyricsSize((s) => Math.min(s + 2, 80));
-        setTitleSize((s) => Math.min(s + 2, 72));
+        setManualOffset((o) => Math.min(o + 2, 40));
       }
       if (e.ctrlKey && e.key === "-") {
         e.preventDefault();
-        setLyricsSize((s) => Math.max(s - 2, 14));
-        setTitleSize((s) => Math.max(s - 2, 14));
+        setManualOffset((o) => Math.max(o - 2, -40));
       }
       if (e.ctrlKey && e.key === "0") {
         e.preventDefault();
-        setLyricsSize(DEFAULT_LYRICS);
-        setTitleSize(DEFAULT_TITLE);
+        setManualOffset(0);
       }
       if (!e.ctrlKey && !e.altKey && e.key >= "1" && e.key <= "9") {
         const idx = slides.findIndex((s) => s.verseNum === parseInt(e.key));
@@ -131,6 +267,12 @@ export default function PresentationMode({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [next, prev, onClose, slides, flashControls]);
+
+  // Reset manual offset when moving to a new slide so each stanza starts
+  // from its own clean auto-fit (feels more predictable in practice).
+  useEffect(() => {
+    setManualOffset(0);
+  }, [current]);
 
   useEffect(() => {
     const enter = async () => {
@@ -152,11 +294,9 @@ export default function PresentationMode({
     };
   }, []);
 
-  const slide = slides[current];
   const progressPct =
     slides.length > 1 ? ((current + 1) / slides.length) * 100 : 100;
 
-  // ── Theme-aware colors ──────────────────────────────────────────────────
   const bg = isDark ? "#0A0F1E" : "#FFFFFF";
   const titleColor = isDark ? "rgba(255,255,255,0.92)" : "#1E2761";
   const verseColor = isDark ? "#FFFFFF" : "#1E2761";
@@ -198,9 +338,28 @@ export default function PresentationMode({
         }
       }}
     >
-      {/* ── OVERLAY CONTROLS ────────────────────────── */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          background: progressBg,
+          zIndex: 5,
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            width: `${progressPct}%`,
+            background: progressFill,
+            transition: "width 0.3s",
+          }}
+        />
+      </div>
+
       <div className={`pr-overlay ${showControls ? "visible" : ""}`}>
-        {/* Close */}
         <button
           className="pr-ctrl-btn"
           style={{
@@ -228,7 +387,6 @@ export default function PresentationMode({
           </svg>
         </button>
 
-        {/* Dots / counter */}
         <div className="pr-counter">
           {slides.length <= 14 ? (
             <div className="pr-dots">
@@ -272,13 +430,14 @@ export default function PresentationMode({
           )}
         </div>
 
-        {/* Font controls */}
         <div
-          style={{ display: "flex", gap: 6 }}
+          style={{ display: "flex", gap: 6, alignItems: "center" }}
           onClick={(e) => e.stopPropagation()}
         >
           {[
             {
+              title: "Smaller (Ctrl −)",
+              action: () => setManualOffset((o) => Math.max(o - 2, -40)),
               icon: (
                 <svg
                   width="14"
@@ -294,13 +453,10 @@ export default function PresentationMode({
                   <line x1="8" y1="11" x2="14" y2="11" />
                 </svg>
               ),
-              title: "Smaller (Ctrl −)",
-              action: () => {
-                setLyricsSize((s) => Math.max(s - 2, 14));
-                setTitleSize((s) => Math.max(s - 2, 14));
-              },
             },
             {
+              title: "Reset (Ctrl 0)",
+              action: () => setManualOffset(0),
               icon: (
                 <svg
                   width="14"
@@ -316,13 +472,10 @@ export default function PresentationMode({
                   <path d="M3 3v5h5" />
                 </svg>
               ),
-              title: "Reset (Ctrl 0)",
-              action: () => {
-                setLyricsSize(DEFAULT_LYRICS);
-                setTitleSize(DEFAULT_TITLE);
-              },
             },
             {
+              title: "Larger (Ctrl +)",
+              action: () => setManualOffset((o) => Math.min(o + 2, 40)),
               icon: (
                 <svg
                   width="14"
@@ -339,11 +492,6 @@ export default function PresentationMode({
                   <line x1="8" y1="11" x2="14" y2="11" />
                 </svg>
               ),
-              title: "Larger (Ctrl +)",
-              action: () => {
-                setLyricsSize((s) => Math.min(s + 2, 80));
-                setTitleSize((s) => Math.min(s + 2, 72));
-              },
             },
           ].map((btn, i) => (
             <button
@@ -362,18 +510,36 @@ export default function PresentationMode({
               {btn.icon}
             </button>
           ))}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.35)",
+              fontFamily: "'DM Sans',sans-serif",
+              fontSize: 12,
+              minWidth: 34,
+              textAlign: "center",
+            }}
+          >
+            {displaySize}px
+          </div>
         </div>
       </div>
 
-      {/* ── SLIDE CONTENT ─────────────────────────────── */}
-      <div className="pr-slide">
+      {/* Fixed-size stage — this is what we measure against. minHeight:0
+          stops it from silently growing to match overflowing content,
+          which would otherwise make our "does it fit?" checks meaningless. */}
+      <div
+        ref={fitContainerRef}
+        className="pr-slide"
+        style={{ minHeight: 0, overflow: "hidden" }}
+      >
         {slide.type === "title" ? (
-          /* Title slide */
-          <div style={{ textAlign: "center" }}>
+          <div ref={fitContentRef} style={{ textAlign: "center" }}>
             <div
               style={{
                 fontFamily: mainFont,
-                fontSize: `${titleSize + 16}px`,
+                fontSize: "var(--fit)",
                 fontWeight: 700,
                 color: titleColor,
                 lineHeight: isTelugu ? 1.6 : 1.2,
@@ -386,7 +552,7 @@ export default function PresentationMode({
               <div
                 style={{
                   fontFamily: "'DM Sans', sans-serif",
-                  fontSize: `${titleSize}px`,
+                  fontSize: "var(--fit)",
                   color: translitColor,
                   fontStyle: "italic",
                   lineHeight: 1.4,
@@ -395,22 +561,9 @@ export default function PresentationMode({
                 {transliterateLine(slide.text)}
               </div>
             )}
-            <div
-              style={{
-                marginTop: "2.5rem",
-                color: hintColor,
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 12,
-                letterSpacing: "0.1em",
-              }}
-            >
-              TAP · SWIPE · ARROW KEYS · 1–9 JUMP VERSE · CTRL ± FONT
-            </div>
           </div>
         ) : (
-          /* Lyrics slide — full stanza */
-          <div style={{ width: "100%", maxWidth: 1300 }}>
-            {/* Label */}
+          <div ref={fitContentRef} style={{ width: "100%", maxWidth: 1300 }}>
             <div
               style={{
                 fontFamily: "'DM Sans', sans-serif",
@@ -426,101 +579,109 @@ export default function PresentationMode({
               {slide.label}
             </div>
 
-            {/* Lines — Telugu + transliteration side by side (equal font size) */}
+            {/* Telugu lines — all together, as one block */}
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: isTelugu ? "1rem" : "0.5rem",
+                gap: isTelugu ? "0.4rem" : "0.3rem",
               }}
             >
               {slide.text
                 .split("\n")
                 .filter((l) => l.trim())
                 .map((line, idx) => (
-                  <div key={idx} style={{ textAlign: "center" }}>
-                    {/* Main line */}
-                    <div
-                      style={{
-                        fontFamily: mainFont,
-                        fontSize: `${lyricsSize}px`,
-                        fontWeight: isTelugu ? 600 : 400,
-                        color: slide.type === "refrain" ? refColor : verseColor,
-                        lineHeight: isTelugu ? 1.7 : 1.4,
-                        fontStyle:
-                          slide.type === "refrain" && !isTelugu
-                            ? "italic"
-                            : "normal",
-                      }}
-                    >
-                      {line}
-                    </div>
-                    {/* Transliteration — SAME font size as Telugu */}
-                    {isTelugu && (
-                      <div
-                        style={{
-                          fontFamily: "'DM Sans', sans-serif",
-                          fontSize: `${lyricsSize}px`, // ← same size as Telugu
-                          fontWeight: 400,
-                          color:
-                            slide.type === "refrain"
-                              ? translitRefColor
-                              : translitColor,
-                          lineHeight: 1.4,
-                          fontStyle: "italic",
-                          marginTop: 2,
-                        }}
-                      >
-                        {transliterateLine(line)}
-                      </div>
-                    )}
+                  <div
+                    key={idx}
+                    style={{
+                      textAlign: "center",
+                      fontFamily: mainFont,
+                      fontSize: "var(--fit)",
+                      fontWeight: isTelugu ? 600 : 400,
+                      color: slide.type === "refrain" ? refColor : verseColor,
+                      lineHeight: isTelugu ? 1.7 : 1.4,
+                      fontStyle:
+                        slide.type === "refrain" && !isTelugu
+                          ? "italic"
+                          : "normal",
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {line}
                   </div>
                 ))}
             </div>
+
+            {/* Transliteration — full block, shown below all Telugu lines */}
+            {isTelugu && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.3rem",
+                  marginTop: "1rem",
+                }}
+              >
+                {slide.text
+                  .split("\n")
+                  .filter((l) => l.trim())
+                  .map((line, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        textAlign: "center",
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontSize: "var(--fit)",
+                        color:
+                          slide.type === "refrain"
+                            ? translitRefColor
+                            : translitColor,
+                        fontStyle: "italic",
+                        lineHeight: 1.3,
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {transliterateLine(line)}
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* ── PROGRESS BAR ──────────────────────────────── */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 3,
-          background: progressBg,
-          zIndex: 5,
-        }}
-      >
+      {slide.type === "title" && (
         <div
           style={{
-            height: "100%",
-            width: `${progressPct}%`,
-            background: progressFill,
-            transition: "width 0.4s cubic-bezier(0.4,0,0.2,1)",
-          }}
-        />
-      </div>
-
-      {/* ── HINT ──────────────────────────────────────── */}
-      {showHint && current === 0 && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: 22,
-            left: "50%",
-            transform: "translateX(-50%)",
+            marginTop: "-1rem",
+            marginBottom: "1rem",
+            textAlign: "center",
             color: hintColor,
             fontFamily: "'DM Sans', sans-serif",
             fontSize: 12,
-            letterSpacing: "0.04em",
-            animation: "prHintFade 3.5s forwards",
-            pointerEvents: "none",
-            whiteSpace: "nowrap",
+            letterSpacing: "0.1em",
           }}
         >
-          <span style={{ color: hintSpanColor, fontWeight: 600 }}>← →</span>{" "}
+          TAP · SWIPE · ARROW KEYS · 1–9 JUMP VERSE · CTRL ± FONT
+        </div>
+      )}
+
+      {showHint && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 28,
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: 12,
+            color: hintColor,
+            letterSpacing: "0.06em",
+            textAlign: "center",
+            animation: "prHintFade 3.5s ease forwards",
+            pointerEvents: "none",
+          }}
+        >
+          <span style={{ color: hintSpanColor, fontWeight: 600 }}>tap</span> or{" "}
+          <span style={{ color: hintSpanColor, fontWeight: 600 }}>→</span>{" "}
           navigate &nbsp;·&nbsp;
           <span style={{ color: hintSpanColor, fontWeight: 600 }}>
             1–9

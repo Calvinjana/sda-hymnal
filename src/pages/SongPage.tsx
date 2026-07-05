@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getSongById } from "../services/songs.service";
 import type { Song, Stanza } from "../types/song.types";
 import PresentationMode from "../components/PresentationMode";
-import { buildBilingualLines } from "../utils/transliterate-telugu";
 
 export default function SongPage() {
   const { id } = useParams<{ id: string }>();
@@ -288,10 +287,6 @@ function StanzaBlock({
   const teluguFont = "Noto Sans Telugu, sans-serif";
   const serifFont = "Crimson Pro, serif";
 
-  const lines = isTelugu
-    ? buildBilingualLines(stanza.text)
-    : stanza.text.split("\n").map((l) => ({ telugu: l, translit: "" }));
-
   const blockStyle = stanza.is_chorus
     ? {
         background: "var(--chorus-bg)",
@@ -304,6 +299,7 @@ function StanzaBlock({
 
   return (
     <div style={blockStyle}>
+      {/* Label */}
       <div
         style={{
           fontSize: 11,
@@ -317,42 +313,58 @@ function StanzaBlock({
         {stanza.is_chorus ? "Refrain" : stanza.label}
       </div>
 
-      {lines.map((pair, i) => (
-        <div key={i} style={{ marginBottom: isTelugu ? "0.6rem" : 0 }}>
-          {/* Telugu line */}
+      {isTelugu ? (
+        <>
+          {/* Full Telugu stanza */}
           <div
             style={{
-              fontFamily: isTelugu ? teluguFont : serifFont,
-              fontSize: isTelugu ? "1.15rem" : "1.25rem",
-              lineHeight: isTelugu ? 1.8 : 1.9,
+              fontFamily: teluguFont,
+              fontSize: "1.15rem",
+              lineHeight: 1.8,
               color: "var(--text-primary)",
               fontWeight: 400,
-              fontStyle: stanza.is_chorus && !isTelugu ? "italic" : "normal",
+              whiteSpace: "pre-line",
+              marginBottom: "0.75rem",
             }}
           >
-            {pair.telugu || "\u00A0"}
+            {stanza.text}
           </div>
 
-          {/* Transliteration line — only for Telugu */}
-          {isTelugu && pair.translit && (
+          {/* Full transliteration stanza */}
+          {stanza.translit && (
             <div
               style={{
                 fontFamily: "'DM Sans', sans-serif",
                 fontSize: "0.9rem",
-                lineHeight: 1.5,
+                lineHeight: 1.6,
                 color: "var(--text-muted)",
                 fontStyle: "italic",
-                marginTop: 2,
-                paddingLeft: 2,
+                whiteSpace: "pre-line",
+                paddingLeft: 12,
                 borderLeft: "2px solid var(--border)",
-                paddingBottom: 4,
               }}
             >
-              {pair.translit}
+              {stanza.translit}
             </div>
           )}
-        </div>
-      ))}
+        </>
+      ) : (
+        /* English — line by line as before */
+        stanza.text.split("\n").map((line, i) => (
+          <div
+            key={i}
+            style={{
+              fontFamily: serifFont,
+              fontSize: "1.25rem",
+              lineHeight: 1.9,
+              color: "var(--text-primary)",
+              fontStyle: stanza.is_chorus ? "italic" : "normal",
+            }}
+          >
+            {line || "\u00A0"}
+          </div>
+        ))
+      )}
     </div>
   );
 }
