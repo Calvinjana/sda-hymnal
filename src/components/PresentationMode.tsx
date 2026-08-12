@@ -1,10 +1,4 @@
-import {
-  useState,
-  useEffect,
-  useLayoutEffect,
-  useCallback,
-  useRef,
-} from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import type { Song } from "../types/song.types";
 import { transliterateLine } from "../utils/transliterate-telugu";
 import { useTheme } from "../contexts/ThemeContext";
@@ -16,88 +10,26 @@ interface Slide {
   verseNum?: number;
 }
 
-// Telugu-only: how many "lines" (or, when a stanza has no real line breaks,
-// phrase-groups) to show per slide. Smaller chunks = bigger auto-fit font.
-// English stanzas are NEVER chunked — always one slide per stanza.
-const LINES_PER_SLIDE = 2;
-
-function chunkLines(text: string, groupSize = LINES_PER_SLIDE): string[] {
-  // Case 1 — the stanza has real line breaks: chunk by physical lines.
-  if (text.includes("\n")) {
-    const lines = text.split("\n").filter((l) => l.trim());
-    if (lines.length === 0) return [text];
-    const chunks: string[] = [];
-    for (let i = 0; i < lines.length; i += groupSize) {
-      chunks.push(lines.slice(i, i + groupSize).join("\n"));
-    }
-    return chunks;
-  }
-
-  // Case 2 — no real line breaks (most of our OCR'd stanzas). Fall back to
-  // splitting on " - " (dash WITH spaces on both sides), which is how the
-  // hymnal marks phrase boundaries. This deliberately skips dashes with no
-  // surrounding spaces (e.g. "మొక్ష-వాసా"), which are word-internal
-  // hyphens, not phrase breaks.
-  const phrases = text
-    .split(" - ")
-    .map((p) => p.trim())
-    .filter(Boolean);
-  if (phrases.length <= 1) return [text];
-  const chunks: string[] = [];
-  for (let i = 0; i < phrases.length; i += groupSize) {
-    chunks.push(phrases.slice(i, i + groupSize).join(" - "));
-  }
-  return chunks;
-}
-
 function buildSlides(song: Song): Slide[] {
   const slides: Slide[] = [];
   slides.push({ type: "title", label: song.num, text: song.title });
 
-  const isTelugu = song.lang === "te";
   const chorus = song.stanzas.find((s) => s.is_chorus);
   const verses = song.stanzas.filter((s) => !s.is_chorus);
 
-  const pushStanza = (
-    text: string,
-    baseLabel: string,
-    type: "verse" | "refrain",
-    verseNum?: number,
-  ) => {
-    if (!isTelugu) {
-      // English: unchanged — whole stanza on one slide.
-      slides.push({ type, label: baseLabel, text, verseNum });
-      return;
-    }
-    const chunks = chunkLines(text);
-    chunks.forEach((chunk, i) => {
-      slides.push({
-        type,
-        label:
-          chunks.length > 1
-            ? `${baseLabel} · ${i + 1}/${chunks.length}`
-            : baseLabel,
-        text: chunk,
-        // Only the first chunk answers the 1–9 "jump to verse" shortcut;
-        // later chunks of the same stanza are reached by continuing forward.
-        verseNum: i === 0 ? verseNum : undefined,
-      });
-    });
-  };
-
   if (song.has_chorus && chorus) {
     verses.forEach((v, i) => {
-      pushStanza(v.text, `Verse ${i + 1}`, "verse", i + 1);
-      pushStanza(chorus.text, "Refrain", "refrain");
+      slides.push({ type: "verse", label: `Verse ${i + 1}`, text: v.text, verseNum: i + 1 });
+      slides.push({ type: "refrain", label: "Refrain", text: chorus.text });
     });
   } else {
     song.stanzas.forEach((v, i) => {
-      pushStanza(
-        v.text,
-        v.is_chorus ? "Refrain" : `Verse ${i + 1}`,
-        v.is_chorus ? "refrain" : "verse",
-        v.is_chorus ? undefined : i + 1,
-      );
+      slides.push({
+        type: v.is_chorus ? "refrain" : "verse",
+        label: v.is_chorus ? "Refrain" : `Verse ${i + 1}`,
+        text: v.text,
+        verseNum: v.is_chorus ? undefined : i + 1,
+      });
     });
   }
 
@@ -199,10 +131,7 @@ export default function PresentationMode({
 
   // Manual +/- nudges from the measured baseline. Allowed to exceed the
   // perfect-fit size on purpose (that's the user overriding auto-fit).
-  const displaySize = Math.min(
-    MAX_FONT,
-    Math.max(MIN_FONT, autoSize + manualOffset),
-  );
+  const displaySize = Math.min(MAX_FONT, Math.max(MIN_FONT, autoSize + manualOffset));
 
   useEffect(() => {
     const onResize = () =>
@@ -237,12 +166,10 @@ export default function PresentationMode({
     const handler = (e: KeyboardEvent) => {
       flashControls();
       if (["ArrowRight", "ArrowDown", " ", "PageDown"].includes(e.key)) {
-        e.preventDefault();
-        next();
+        e.preventDefault(); next();
       }
       if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) {
-        e.preventDefault();
-        prev();
+        e.preventDefault(); prev();
       }
       if (e.key === "Escape") onClose();
       if (e.key === "Home") setCurrent(0);
@@ -276,26 +203,17 @@ export default function PresentationMode({
 
   useEffect(() => {
     const enter = async () => {
-      try {
-        await document.documentElement.requestFullscreen?.();
-      } catch {}
-      try {
-        await (screen.orientation as any)?.lock?.("landscape");
-      } catch {}
+      try { await document.documentElement.requestFullscreen?.(); } catch {}
+      try { await (screen.orientation as any)?.lock?.("landscape"); } catch {}
     };
     enter();
     return () => {
-      try {
-        (screen.orientation as any)?.unlock?.();
-      } catch {}
-      try {
-        if (document.fullscreenElement) document.exitFullscreen?.();
-      } catch {}
+      try { (screen.orientation as any)?.unlock?.(); } catch {}
+      try { if (document.fullscreenElement) document.exitFullscreen?.(); } catch {}
     };
   }, []);
 
-  const progressPct =
-    slides.length > 1 ? ((current + 1) / slides.length) * 100 : 100;
+  const progressPct = slides.length > 1 ? ((current + 1) / slides.length) * 100 : 100;
 
   const bg = isDark ? "#0A0F1E" : "#FFFFFF";
   const titleColor = isDark ? "rgba(255,255,255,0.92)" : "#1E2761";
@@ -338,25 +256,8 @@ export default function PresentationMode({
         }
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 3,
-          background: progressBg,
-          zIndex: 5,
-        }}
-      >
-        <div
-          style={{
-            height: "100%",
-            width: `${progressPct}%`,
-            background: progressFill,
-            transition: "width 0.3s",
-          }}
-        />
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: progressBg, zIndex: 5 }}>
+        <div style={{ height: "100%", width: `${progressPct}%`, background: progressFill, transition: "width 0.3s" }} />
       </div>
 
       <div className={`pr-overlay ${showControls ? "visible" : ""}`}>
@@ -367,21 +268,10 @@ export default function PresentationMode({
             border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.10)"}`,
             color: btnColor,
           }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose();
-          }}
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
           title="Close (Esc)"
         >
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
@@ -393,24 +283,16 @@ export default function PresentationMode({
               {slides.map((sl, i) => (
                 <div
                   key={i}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrent(i);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); setCurrent(i); }}
                   style={{
                     width: i === current ? 20 : sl.type === "refrain" ? 9 : 7,
                     height: 7,
                     borderRadius: sl.type === "refrain" ? 3 : "50%",
-                    background:
-                      i === current
-                        ? sl.type === "refrain"
-                          ? "#F59E0B"
-                          : dotActive
-                        : sl.type === "refrain"
-                          ? isDark
-                            ? "rgba(253,230,138,0.25)"
-                            : "rgba(184,64,0,0.2)"
-                          : dotColor,
+                    background: i === current
+                      ? sl.type === "refrain" ? "#F59E0B" : dotActive
+                      : sl.type === "refrain"
+                        ? isDark ? "rgba(253,230,138,0.25)" : "rgba(184,64,0,0.2)"
+                        : dotColor,
                     cursor: "pointer",
                     transition: "all 0.25s",
                   }}
@@ -418,39 +300,20 @@ export default function PresentationMode({
               ))}
             </div>
           ) : (
-            <span
-              style={{
-                color: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.35)",
-                fontFamily: "'DM Sans',sans-serif",
-                fontSize: 13,
-              }}
-            >
+            <span style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.35)", fontFamily: "'DM Sans',sans-serif", fontSize: 13 }}>
               {current + 1} / {slides.length}
             </span>
           )}
         </div>
 
-        <div
-          style={{ display: "flex", gap: 6, alignItems: "center" }}
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }} onClick={(e) => e.stopPropagation()}>
           {[
             {
               title: "Smaller (Ctrl −)",
               action: () => setManualOffset((o) => Math.max(o - 2, -40)),
               icon: (
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  <line x1="8" y1="11" x2="14" y2="11" />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" />
                 </svg>
               ),
             },
@@ -458,18 +321,8 @@ export default function PresentationMode({
               title: "Reset (Ctrl 0)",
               action: () => setManualOffset(0),
               icon: (
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                  <path d="M3 3v5h5" />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" />
                 </svg>
               ),
             },
@@ -477,19 +330,8 @@ export default function PresentationMode({
               title: "Larger (Ctrl +)",
               action: () => setManualOffset((o) => Math.min(o + 2, 40)),
               icon: (
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  <line x1="11" y1="8" x2="11" y2="14" />
-                  <line x1="8" y1="11" x2="14" y2="11" />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" />
                 </svg>
               ),
             },
@@ -498,9 +340,7 @@ export default function PresentationMode({
               key={i}
               className="pr-ctrl-btn"
               style={{
-                background: isDark
-                  ? "rgba(255,255,255,0.08)"
-                  : "rgba(0,0,0,0.06)",
+                background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
                 border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.10)"}`,
                 color: btnColor,
               }}
@@ -510,17 +350,11 @@ export default function PresentationMode({
               {btn.icon}
             </button>
           ))}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.35)",
-              fontFamily: "'DM Sans',sans-serif",
-              fontSize: 12,
-              minWidth: 34,
-              textAlign: "center",
-            }}
-          >
+          <div style={{
+            display: "flex", alignItems: "center",
+            color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.35)",
+            fontFamily: "'DM Sans',sans-serif", fontSize: 12, minWidth: 34, textAlign: "center",
+          }}>
             {displaySize}px
           </div>
         </div>
@@ -536,114 +370,86 @@ export default function PresentationMode({
       >
         {slide.type === "title" ? (
           <div ref={fitContentRef} style={{ textAlign: "center" }}>
-            <div
-              style={{
-                fontFamily: mainFont,
-                fontSize: "var(--fit)",
-                fontWeight: 700,
-                color: titleColor,
-                lineHeight: isTelugu ? 1.6 : 1.2,
-                marginBottom: isTelugu ? "1rem" : "0.5rem",
-              }}
-            >
+            <div style={{
+              fontFamily: mainFont,
+              fontSize: "var(--fit)",
+              fontWeight: 700,
+              color: titleColor,
+              lineHeight: isTelugu ? 1.6 : 1.2,
+              marginBottom: isTelugu ? "1rem" : "0.5rem",
+            }}>
               {slide.text}
             </div>
             {isTelugu && (
-              <div
-                style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "var(--fit)",
-                  color: translitColor,
-                  fontStyle: "italic",
-                  lineHeight: 1.4,
-                }}
-              >
+              <div style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: "var(--fit)",
+                color: translitColor,
+                fontStyle: "italic",
+                lineHeight: 1.4,
+              }}>
                 {transliterateLine(slide.text)}
               </div>
             )}
           </div>
         ) : (
           <div ref={fitContentRef} style={{ width: "100%", maxWidth: 1300 }}>
-            <div
-              style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: "clamp(11px, 1.3vw, 15px)",
-                fontWeight: 600,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                color: slide.type === "refrain" ? labelRefColor : labelColor,
-                marginBottom: "1.25rem",
-                textAlign: "center",
-              }}
-            >
+            <div style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: "clamp(11px, 1.3vw, 15px)",
+              fontWeight: 600,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: slide.type === "refrain" ? labelRefColor : labelColor,
+              marginBottom: "1.25rem",
+              textAlign: "center",
+            }}>
               {slide.label}
             </div>
 
             {/* Telugu lines — all together, as one block */}
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: isTelugu ? "0.4rem" : "0.3rem",
-              }}
-            >
-              {slide.text
-                .split("\n")
-                .filter((l) => l.trim())
-                .map((line, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      textAlign: "center",
-                      fontFamily: mainFont,
-                      fontSize: "var(--fit)",
-                      fontWeight: isTelugu ? 600 : 400,
-                      color: slide.type === "refrain" ? refColor : verseColor,
-                      lineHeight: isTelugu ? 1.7 : 1.4,
-                      fontStyle:
-                        slide.type === "refrain" && !isTelugu
-                          ? "italic"
-                          : "normal",
-                      overflowWrap: "anywhere",
-                    }}
-                  >
-                    {line}
-                  </div>
-                ))}
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: isTelugu ? "0.4rem" : "0.3rem",
+            }}>
+              {slide.text.split("\n").filter((l) => l.trim()).map((line, idx) => (
+                <div key={idx} style={{
+                  textAlign: "center",
+                  fontFamily: mainFont,
+                  fontSize: "var(--fit)",
+                  fontWeight: isTelugu ? 600 : 400,
+                  color: slide.type === "refrain" ? refColor : verseColor,
+                  lineHeight: isTelugu ? 1.7 : 1.4,
+                  fontStyle: slide.type === "refrain" && !isTelugu ? "italic" : "normal",
+                  overflowWrap: "anywhere",
+                }}>
+                  {line}
+                </div>
+              ))}
             </div>
 
             {/* Transliteration — full block, shown below all Telugu lines */}
             {isTelugu && (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.3rem",
-                  marginTop: "1rem",
-                }}
-              >
-                {slide.text
-                  .split("\n")
-                  .filter((l) => l.trim())
-                  .map((line, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        textAlign: "center",
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontSize: "var(--fit)",
-                        color:
-                          slide.type === "refrain"
-                            ? translitRefColor
-                            : translitColor,
-                        fontStyle: "italic",
-                        lineHeight: 1.3,
-                        overflowWrap: "anywhere",
-                      }}
-                    >
-                      {transliterateLine(line)}
-                    </div>
-                  ))}
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.3rem",
+                marginTop: "1rem",
+              }}>
+                {slide.text.split("\n").filter((l) => l.trim()).map((line, idx) => (
+                  <div key={idx} style={{
+                    textAlign: "center",
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: "var(--fit)",
+                    color: slide.type === "refrain" ? translitRefColor : translitColor,
+                    fontStyle: "italic",
+                    lineHeight: 1.3,
+                    overflowWrap: "anywhere",
+                  }}>
+                    {transliterateLine(line)}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -651,49 +457,36 @@ export default function PresentationMode({
       </div>
 
       {slide.type === "title" && (
-        <div
-          style={{
-            marginTop: "-1rem",
-            marginBottom: "1rem",
-            textAlign: "center",
-            color: hintColor,
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: 12,
-            letterSpacing: "0.1em",
-          }}
-        >
+        <div style={{
+          marginTop: "-1rem",
+          marginBottom: "1rem",
+          textAlign: "center",
+          color: hintColor,
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: 12,
+          letterSpacing: "0.1em",
+        }}>
           TAP · SWIPE · ARROW KEYS · 1–9 JUMP VERSE · CTRL ± FONT
         </div>
       )}
 
       {showHint && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: 28,
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: 12,
-            color: hintColor,
-            letterSpacing: "0.06em",
-            textAlign: "center",
-            animation: "prHintFade 3.5s ease forwards",
-            pointerEvents: "none",
-          }}
-        >
+        <div style={{
+          position: "absolute", bottom: 28,
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: 12, color: hintColor,
+          letterSpacing: "0.06em", textAlign: "center",
+          animation: "prHintFade 3.5s ease forwards",
+          pointerEvents: "none",
+        }}>
           <span style={{ color: hintSpanColor, fontWeight: 600 }}>tap</span> or{" "}
           <span style={{ color: hintSpanColor, fontWeight: 600 }}>→</span>{" "}
           navigate &nbsp;·&nbsp;
-          <span style={{ color: hintSpanColor, fontWeight: 600 }}>
-            1–9
-          </span>{" "}
+          <span style={{ color: hintSpanColor, fontWeight: 600 }}>1–9</span>{" "}
           jump verse &nbsp;·&nbsp;
-          <span style={{ color: hintSpanColor, fontWeight: 600 }}>
-            Ctrl ±
-          </span>{" "}
+          <span style={{ color: hintSpanColor, fontWeight: 600 }}>Ctrl ±</span>{" "}
           font &nbsp;·&nbsp;
-          <span style={{ color: hintSpanColor, fontWeight: 600 }}>
-            Esc
-          </span>{" "}
+          <span style={{ color: hintSpanColor, fontWeight: 600 }}>Esc</span>{" "}
           close
         </div>
       )}
