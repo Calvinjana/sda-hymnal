@@ -16,31 +16,66 @@ interface Slide {
   verseNum?: number;
 }
 
+// Telugu-only: your hymnal text uses '=' as an internal phrase-break marker
+// within a stanza (a more reliable signal than the dash, which is also
+// used inside compound words). Wherever '=' appears, start a new slide.
+// If a stanza has no '=' at all, it stays as one whole-stanza slide.
+function splitByEquals(text: string): string[] {
+  const parts = text
+    .split("=")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts : [text];
+}
+
 function buildSlides(song: Song): Slide[] {
   const slides: Slide[] = [];
   slides.push({ type: "title", label: song.num, text: song.title });
 
+  const isTelugu = song.lang === "te";
   const chorus = song.stanzas.find((s) => s.is_chorus);
   const verses = song.stanzas.filter((s) => !s.is_chorus);
 
+  const pushStanza = (
+    text: string,
+    baseLabel: string,
+    type: "verse" | "refrain",
+    verseNum?: number,
+  ) => {
+    if (!isTelugu) {
+      // English: unchanged — whole stanza on one slide.
+      slides.push({ type, label: baseLabel, text, verseNum });
+      return;
+    }
+    const parts = splitByEquals(text);
+    parts.forEach((part, i) => {
+      slides.push({
+        type,
+        label:
+          parts.length > 1
+            ? `${baseLabel} · ${i + 1}/${parts.length}`
+            : baseLabel,
+        text: part,
+        // Only the first part answers the 1–9 "jump to verse" shortcut;
+        // later parts of the same stanza are reached by continuing forward.
+        verseNum: i === 0 ? verseNum : undefined,
+      });
+    });
+  };
+
   if (song.has_chorus && chorus) {
     verses.forEach((v, i) => {
-      slides.push({
-        type: "verse",
-        label: `Verse ${i + 1}`,
-        text: v.text,
-        verseNum: i + 1,
-      });
-      slides.push({ type: "refrain", label: "Refrain", text: chorus.text });
+      pushStanza(v.text, `Verse ${i + 1}`, "verse", i + 1);
+      pushStanza(chorus.text, "Refrain", "refrain");
     });
   } else {
     song.stanzas.forEach((v, i) => {
-      slides.push({
-        type: v.is_chorus ? "refrain" : "verse",
-        label: v.is_chorus ? "Refrain" : `Verse ${i + 1}`,
-        text: v.text,
-        verseNum: v.is_chorus ? undefined : i + 1,
-      });
+      pushStanza(
+        v.text,
+        v.is_chorus ? "Refrain" : `Verse ${i + 1}`,
+        v.is_chorus ? "refrain" : "verse",
+        v.is_chorus ? undefined : i + 1,
+      );
     });
   }
 
